@@ -234,7 +234,6 @@ class FEheat2D:
         self.Minv = np.linalg.inv(self.M)
 
         # Calculate A entries
-        # self.A = (self.dt/2.0) * self.Minv @ self.K
         self.A = self.I + (self.dt/2.0) * self.Minv @ self.K
 
          # print('Evaluate source matrix')
@@ -246,7 +245,6 @@ class FEheat2D:
     def solve(self):
 
         # RHS
-        # self.b = (self.dt/2.0) * self.Minv @ self.s
         self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
 
         # apply boundary conditions Dirichlet
