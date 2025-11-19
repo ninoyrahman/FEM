@@ -99,7 +99,7 @@ class FEPoisson2D:
         self.b = np.zeros((self.n_points, 1))
         self.u = np.zeros_like(self.b)
 
-        self.points_to_solve = []        
+        self.points_to_solve = np.array([], dtype=np.int32)      
 
         self.gpu = _gpu
         if self.gpu:
@@ -110,6 +110,7 @@ class FEPoisson2D:
             self.A_d = cp.zeros((self.n_points, self.n_points))
             self.b_d = cp.zeros((self.n_points, 1))
             self.u_d = cp.zeros_like(self.b_d)
+            self.points_to_solve_d = np.array([], dtype=np.int32)
             
     # @staticmethod
     def calc_local_update_Ab(self, p1, p2, p3):
@@ -179,7 +180,11 @@ class FEPoisson2D:
 
         for p_idx in range(self.mesh.tri.npoints):
             if p_idx not in self.mesh.bc_points["dirichlet"]:
-                self.points_to_solve.append(p_idx)     
+                self.points_to_solve = np.append(self.points_to_solve, p_idx)
+
+        # print(self.points_to_solve)
+        if self.gpu:
+            self.points_to_solve_d = cp.asarray(self.points_to_solve)
 
         # Calculate A and b entries
         self.set_A_b()
@@ -198,8 +203,8 @@ class FEPoisson2D:
             cp.cuda.runtime.memcpy(self.A_d.data.ptr, self.A.ctypes.data, self.A.nbytes, cp.cuda.runtime.memcpyHostToDevice)
             cp.cuda.runtime.memcpy(self.b_d.data.ptr, self.b.ctypes.data, self.b.nbytes, cp.cuda.runtime.memcpyHostToDevice)
 
-            # solve 
-            self.u_d[self.points_to_solve] = cp.linalg.solve(self.A_d[self.points_to_solve, :][:, self.points_to_solve], self.b_d[self.points_to_solve])
+            # solve
+            self.u_d[self.points_to_solve_d] = cp.linalg.solve(self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d], self.b_d[self.points_to_solve_d])
             
             # device to host data transfer
             cp.cuda.runtime.memcpy(self.u.ctypes.data, self.u_d.data.ptr, self.u_d.nbytes, cp.cuda.runtime.memcpyDeviceToHost)
@@ -211,7 +216,7 @@ class FEPoisson2D:
             # Free unused blocks back to OS
             self.mp.free_all_blocks()
         else:
-            self.u[points_to_solve] = sp.linalg.solve(self.A[points_to_solve, :][:, points_to_solve], self.b[points_to_solve])
+            self.u[self.points_to_solve] = sp.linalg.solve(self.A[self.points_to_solve, :][:, self.points_to_solve], self.b[self.points_to_solve])
 
         # Set the known
         for key, value in self.mesh.bc_points["dirichlet"].items():
