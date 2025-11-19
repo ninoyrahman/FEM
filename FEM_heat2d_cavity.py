@@ -1,34 +1,9 @@
 # class
 import numpy as np
 import scipy as sp
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-import matplotlib as mpl
-import matplotlib.cm as cm
-
-def plot3d(ax, data, varmin, varmax, x, y):
-    var = np.array(data, copy=True)
-    varmin = 0
-    varmax = 1
-    lrange = np.linspace(varmin, varmax, 11)
-    var[var < varmin] = varmin
-    var[var > varmax] = varmax
-    
-    ax.view_init(elev=20, azim=130, roll=0)
-    
-    surf = ax.plot_trisurf(x, y, var,
-                           linewidth=0.2, antialiased=True, cmap=cm.coolwarm, label="FE")
-    
-    ax.set_xlim([x.min(), x.max()])
-    ax.set_ylim([y.min(), y.max()])
-    ax.set_xlabel(r'$x$')
-    ax.set_ylabel(r'$y$')
-    ax.set_zlabel(r'$u$')
-    
-    cbar = plt.colorbar(surf, ax=ax, orientation="horizontal", pad=0.02, ticks=lrange)
-    cbar.ax.set_xlabel('u')
-    cbar.ax.xaxis.set_label_position('bottom')
+import cupy as cp
+import cupyx.scipy as cps
+from FEM_tri import GenericTriElement, GaussianQuadratureTri
 
 # Mesh class
 class Mesh:
@@ -114,63 +89,9 @@ class Mesh:
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
                 
 
-# Triangle class
-class GenericTriElement:
-    def __init__(self):
-        # Shape functions derivatives in a local triangular element
-        N1_dxi = 1
-        N2_dxi = 0
-        N3_dxi = -1
-        N1_deta = 0
-        N2_deta = 1
-        N3_deta = -1
-        self.dN = np.array([
-            [N1_dxi, N1_deta],
-            [N2_dxi, N2_deta],
-            [N3_dxi, N3_deta]])
-
-    @staticmethod
-    def N1(xi, eta):
-        return xi
-
-    @staticmethod
-    def N2(xi, eta):
-        return eta
-
-    @staticmethod
-    def N3(xi, eta):
-        return 1 - xi - eta
-
-    # Coordinate transformation local to global
-    def get_xy(self, xi, eta, p1, p2, p3):
-        return (p1[0] * self.N1(xi, eta) + p2[0] * self.N2(xi, eta) + p3[0] * self.N3(xi, eta),
-                p1[1] * self.N1(xi, eta) + p2[1] * self.N2(xi, eta) + p3[1] * self.N3(xi, eta))
-
-# Gaussian integration class
-class GaussianQuadratureTri:
-    def __init__(self):
-        # nip = 3 # number of integration points
-        self.wps = [(0.5, 0.5), (0.5, 0), (0, 0.5)]  # weighted points
-        self.ws = (1 / 6, 1 / 6, 1 / 6)              # weights
-        self.tri_element = GenericTriElement()
-
-    # Calculate the numerical integration for each node
-    def calculate(self, _f, p1, p2, p3):
-        # Get the global (x,y) coordinates at the weighted points
-        xys = [self.tri_element.get_xy(wp[0], wp[1], p1, p2, p3) for wp in self.wps]
-
-        return np.array([
-            sum([w * _f(xy[0], xy[1]) * self.tri_element.N1(
-                wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
-            sum([w * _f(xy[0], xy[1]) * self.tri_element.N2(
-                wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
-            sum([w * _f(xy[0], xy[1]) * self.tri_element.N3(
-                wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
-        ])
-
 # FEM Poisson 2D solver class
 class FEheat2D:
-    def __init__(self, _mesh, _f, _u=None):
+    def __init__(self, _mesh, _f, _u=None, _gpu=False, _sparse=False):
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 
@@ -196,6 +117,23 @@ class FEheat2D:
             self.u = np.array(_u, copy=True)
 
         self.dt = 1e-3
+
+        self.points_to_solve = np.array([], dtype=np.int32)
+
+        self.gpu = _gpu
+        self.sparse = _sparse
+        if self.gpu:
+            # Memory Pools for Efficient Allocation
+            self.mp = cp.get_default_memory_pool()
+            self.pp = cp.get_default_pinned_memory_pool()
+            
+            self.A_d = cp.zeros((self.n_points, self.n_points))
+            self.b_d = cp.zeros((self.n_points, 1))
+            self.u_d = cp.zeros_like(self.b_d)
+            self.points_to_solve_d = np.array([], dtype=np.int32)
+
+        print('Solving using GPU:', self.gpu)
+        print('Solving using sparse matrix:', self.sparse)
 
         # print(self.M.shape, self.Minv.shape, self.K.shape, self.I.shape, self.A.shape, self.s.shape, self.b.shape, self.u.shape)
 
@@ -295,6 +233,14 @@ class FEheat2D:
         self.M = np.zeros((self.n_points, self.n_points))
         self.b = np.zeros((self.n_points, 1))
         
+        # assign points to solve
+        for p_idx in range(self.mesh.tri.npoints):
+            if p_idx not in self.mesh.bc_points["dirichlet"] and self.mesh.pflg[p_idx]:
+                self.points_to_solve = np.append(self.points_to_solve, self.mesh.pmap[p_idx])
+
+        if self.gpu:
+            self.points_to_solve_d = cp.asarray(self.points_to_solve)
+            
         # Calculate K and M entries
         self.set_K_M()
 
@@ -316,22 +262,38 @@ class FEheat2D:
         self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
 
         # apply boundary conditions Dirichlet
-        self.set_boundary_conditions_dirichlet()  
-
-        # Exclude known u from the Dirichlet boundary condition
-        points_to_solve = []
-        
-        for p_idx in range(self.mesh.tri.npoints):
-            if p_idx not in self.mesh.bc_points["dirichlet"] and self.mesh.pflg[p_idx]:
-                points_to_solve.append(self.mesh.pmap[p_idx])
-                
-        # for p_idx in range(self.mesh.tri.npoints):
-        #     if p_idx not in self.mesh.bc_points["dirichlet"]:
-        #         points_to_solve.append(p_idx)
+        self.set_boundary_conditions_dirichlet()
                 
         # Solve u = A^-1 * b
-        self.u[points_to_solve] = sp.linalg.solve(self.A[points_to_solve, :][:, points_to_solve], self.b[points_to_solve])
-        # self.u[points_to_solve, 0], exitCode = sp.sparse.linalg.gmres(self.A[points_to_solve, :][:, points_to_solve], self.b[points_to_solve])
+        if not self.gpu:
+            if self.sparse:
+                A_sparse = sp.sparse.csr_matrix(self.A[self.points_to_solve, :][:, self.points_to_solve])
+                # self.u[self.points_to_solve, 0] = sp.sparse.linalg.spsolve(A_sparse, self.b[self.points_to_solve])
+                self.u[self.points_to_solve, 0], exitCode = sp.sparse.linalg.gmres(A_sparse, self.b[self.points_to_solve])
+            else:
+                self.u[self.points_to_solve] = sp.linalg.solve(self.A[self.points_to_solve, :][:, self.points_to_solve], self.b[self.points_to_solve])
+        else:
+            # host to device data transfer
+            cp.cuda.runtime.memcpy(self.A_d.data.ptr, self.A.ctypes.data, self.A.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+            cp.cuda.runtime.memcpy(self.b_d.data.ptr, self.b.ctypes.data, self.b.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+
+            # solve
+            if self.sparse:
+                A_d_sparse = cps.sparse.csr_matrix(self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d])
+                # self.u_d[self.points_to_solve_d] = cps.sparse.linalg.spsolve(A_d_sparse, self.b_d[self.points_to_solve_d])
+                self.u_d[self.points_to_solve_d, 0], exitCode = cps.sparse.linalg.gmres(A_d_sparse, self.b_d[self.points_to_solve_d])
+            else: 
+                self.u_d[self.points_to_solve_d] = cp.linalg.solve(self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d], self.b_d[self.points_to_solve_d])
+            
+            # device to host data transfer
+            cp.cuda.runtime.memcpy(self.u.ctypes.data, self.u_d.data.ptr, self.u_d.nbytes, cp.cuda.runtime.memcpyDeviceToHost)
+
+            # Inspect pool usage
+            # print(f"Used: {self.mp.used_bytes() / 1e6:.2f} MB")
+            # print(f"Total allocated: {self.mp.total_bytes() / 1e6:.2f} MB")
+            
+            # Free unused blocks back to OS
+            self.mp.free_all_blocks()
 
         # Set the known
         for key, value in self.mesh.bc_points["dirichlet"].items():
