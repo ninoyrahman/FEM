@@ -85,7 +85,7 @@ class GaussianQuadratureTri:
 
 # FEM Poisson 2D solver class
 class FEPoisson2D:
-    def __init__(self, _mesh, _f, _gpu=False):
+    def __init__(self, _mesh, _f, _gpu=False, _sparse=False):
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 
@@ -99,8 +99,9 @@ class FEPoisson2D:
         self.b = np.zeros((self.n_points, 1))
         self.u = np.zeros_like(self.b)
 
-        self.points_to_solve = np.array([], dtype=np.int32)      
+        self.points_to_solve = np.array([], dtype=np.int32)
 
+        self.sparse = _sparse
         self.gpu = _gpu
         if self.gpu:
             # Memory Pools for Efficient Allocation
@@ -204,7 +205,12 @@ class FEPoisson2D:
             cp.cuda.runtime.memcpy(self.b_d.data.ptr, self.b.ctypes.data, self.b.nbytes, cp.cuda.runtime.memcpyHostToDevice)
 
             # solve
-            self.u_d[self.points_to_solve_d] = cp.linalg.solve(self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d], self.b_d[self.points_to_solve_d])
+            if self.sparse:
+                print('Solving sparse matrix')
+                A_d_sparse = cps.sparse.csr_matrix(self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d])
+                self.u_d[self.points_to_solve_d] = cps.sparse.linalg.spsolve(A_d_sparse, self.b_d[self.points_to_solve_d])
+            else: 
+                self.u_d[self.points_to_solve_d] = cp.linalg.solve(self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d], self.b_d[self.points_to_solve_d])
             
             # device to host data transfer
             cp.cuda.runtime.memcpy(self.u.ctypes.data, self.u_d.data.ptr, self.u_d.nbytes, cp.cuda.runtime.memcpyDeviceToHost)
@@ -216,7 +222,13 @@ class FEPoisson2D:
             # Free unused blocks back to OS
             self.mp.free_all_blocks()
         else:
-            self.u[self.points_to_solve] = sp.linalg.solve(self.A[self.points_to_solve, :][:, self.points_to_solve], self.b[self.points_to_solve])
+            print('Solving using CPU')
+            if self.sparse:
+                print('Solving sparse matrix')
+                A_sparse = sp.sparse.csr_matrix(self.A[self.points_to_solve, :][:, self.points_to_solve])
+                self.u[self.points_to_solve, 0] = sp.sparse.linalg.spsolve(A_sparse, self.b[self.points_to_solve])
+            else:
+                self.u[self.points_to_solve] = sp.linalg.solve(self.A[self.points_to_solve, :][:, self.points_to_solve], self.b[self.points_to_solve])
 
         # Set the known
         for key, value in self.mesh.bc_points["dirichlet"].items():
