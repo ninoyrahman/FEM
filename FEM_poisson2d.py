@@ -1,6 +1,8 @@
 # class
 import numpy as np
 import scipy as sp
+import cupy as cp
+import cupyx.scipy as cps
 
 # Mesh class
 class Mesh:
@@ -83,7 +85,7 @@ class GaussianQuadratureTri:
 
 # FEM Poisson 2D solver class
 class FEPoisson2D:
-    def __init__(self, _mesh, _f):
+    def __init__(self, _mesh, _f, _gpu=False):
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 
@@ -97,6 +99,18 @@ class FEPoisson2D:
         self.b = np.zeros((self.n_points, 1))
         self.u = np.zeros_like(self.b)
 
+        self.points_to_solve = []        
+
+        self.gpu = _gpu
+        if self.gpu:
+            # Memory Pools for Efficient Allocation
+            self.mp = cp.get_default_memory_pool()
+            self.pp = cp.get_default_pinned_memory_pool()
+            
+            self.A_d = cp.zeros((self.n_points, self.n_points))
+            self.b_d = cp.zeros((self.n_points, 1))
+            self.u_d = cp.zeros_like(self.b_d)
+            
     # @staticmethod
     def calc_local_update_Ab(self, p1, p2, p3):
         # Calculate the Jacobian, its determinant, and inverse
@@ -163,6 +177,10 @@ class FEPoisson2D:
         self.A = np.zeros((self.n_points, self.n_points))
         self.b = np.zeros((self.n_points, 1))
 
+        for p_idx in range(self.mesh.tri.npoints):
+            if p_idx not in self.mesh.bc_points["dirichlet"]:
+                self.points_to_solve.append(p_idx)     
+
         # Calculate A and b entries
         self.set_A_b()
 
@@ -173,17 +191,27 @@ class FEPoisson2D:
         # Initialize u
         self.u = np.zeros_like(self.b)
 
-        # Exclude known u from the Dirichlet boundary condition
-        points_to_solve = []
-        for p_idx in range(self.mesh.tri.npoints):
-            if p_idx not in self.mesh.bc_points["dirichlet"]:
-                points_to_solve.append(p_idx)
-        # Solve u = A^-1 * b
-        # self.u[points_to_solve] = np.dot(np.linalg.inv(self.A[points_to_solve, :][:, points_to_solve]),
-        #                                  self.b[points_to_solve])
+        if self.gpu:
+            print('Solving using GPU')
 
-        self.u[points_to_solve] = sp.linalg.solve(self.A[points_to_solve, :][:, points_to_solve], self.b[points_to_solve])
-        # self.u[points_to_solve, 0], exitCode = sp.sparse.linalg.gmres(self.A[points_to_solve, :][:, points_to_solve], self.b[points_to_solve])
+            # host to device data transfer
+            cp.cuda.runtime.memcpy(self.A_d.data.ptr, self.A.ctypes.data, self.A.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+            cp.cuda.runtime.memcpy(self.b_d.data.ptr, self.b.ctypes.data, self.b.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+
+            # solve 
+            self.u_d[self.points_to_solve] = cp.linalg.solve(self.A_d[self.points_to_solve, :][:, self.points_to_solve], self.b_d[self.points_to_solve])
+            
+            # device to host data transfer
+            cp.cuda.runtime.memcpy(self.u.ctypes.data, self.u_d.data.ptr, self.u_d.nbytes, cp.cuda.runtime.memcpyDeviceToHost)
+
+            # Inspect pool usage
+            # print(f"Used: {self.mp.used_bytes() / 1e6:.2f} MB")
+            # print(f"Total allocated: {self.mp.total_bytes() / 1e6:.2f} MB")
+            
+            # Free unused blocks back to OS
+            self.mp.free_all_blocks()
+        else:
+            self.u[points_to_solve] = sp.linalg.solve(self.A[points_to_solve, :][:, points_to_solve], self.b[points_to_solve])
 
         # Set the known
         for key, value in self.mesh.bc_points["dirichlet"].items():
