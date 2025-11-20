@@ -8,7 +8,7 @@ from FEM_mesh import Mesh
 
 # FEM Poisson 2D solver class
 class FEheat2D:
-"""
+    """
     class for 2D Poisson equation solver with finite element method
 
     ...
@@ -24,7 +24,7 @@ class FEheat2D:
         n_elements : int 
             Number of simplex in Delaunay triangulation
         n_points : int
-            Number of simplex in Delaunay triangulation
+            Number of points in Delaunay triangulation
         f : function
             R.H.S function
         dt : float
@@ -93,7 +93,7 @@ class FEheat2D:
             True: use GPU matrix solver, False: use CPU matrix solver, default CPU
         _sparse : bool
             True: use sparse matrix solver, False: use dense matrix solver, default Dense
-        """         
+        """
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 

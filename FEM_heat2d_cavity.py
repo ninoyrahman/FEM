@@ -5,93 +5,94 @@ import cupy as cp
 import cupyx.scipy as cps
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
 
-# Mesh class
-class Mesh:
-    def __init__(self, x_min, x_max, n_x, y_min, y_max, n_y, r=0.1, rout=None):
-        
-        # Create a list with points coordinate (x,y)
-        points = []
-        nodes_x = np.linspace(x_min, x_max, n_x)
-        nodes_y = np.linspace(y_min, y_max, n_y)
-        for x in nodes_x:
-            for y in nodes_y:
-                if rout is None: # square plate
-                    points.append([x, y])
-                else: # circular plate
-                    if x**2 + y**2 <= rout**2:
-                        points.append([x, y])
-        points = np.array(points)
-        self.points = points
-
-        # Create Delaunay object
-        self.tri = sp.spatial.Delaunay(points)
-
-        # Identify the boundary points
-        self.boundary_points = np.unique(self.tri.convex_hull.flatten())
-
-        # Initialize the boundary conditions dictionary
-        self.bc_points = {
-            "dirichlet": dict(),
-            "neumann_edge": dict()
-        }
-
-        r2 = r**2
-        
-        #flags for cavity
-        # True is 1 and False is 0
-        self.pflg = np.ones(self.tri.npoints, dtype=bool) # points-outside-cavity flag
-        self.sflg = np.ones(self.tri.nsimplex, dtype=bool) # triangles-outside-cavity flag
-        self.bflg = np.zeros(self.tri.npoints, dtype=bool) # boundary-points flag
-        self.cbflg = np.zeros(self.tri.npoints, dtype=bool) # cavity-boundary-points flag
-
-        self.ncavity = 0
-        for idx, p in enumerate(self.tri.points):
-            if (p**2).sum() < r2:
-                self.pflg[idx] = False
-                self.ncavity += 1
-
-        self.npoints = self.tri.npoints - self.ncavity
-
-        print('# cavity points=', self.ncavity)
-        print('# non-cavity points=', self.npoints)
-        print('# boundary points excluding cavity=', self.boundary_points.size)
-        
-        for idx, p_idx in enumerate(self.tri.simplices):
-            if not self.pflg[p_idx[0]] or not self.pflg[p_idx[1]] or not self.pflg[p_idx[2]]:
-                self.sflg[idx] = False
-                p1, p2, p3 = (self.tri.points[p_idx[0]], self.tri.points[p_idx[1]], self.tri.points[p_idx[2]])
-                if (p1**2).sum() >= r2:
-                    self.cbflg[p_idx[0]] = True
-                    self.boundary_points = np.append(self.boundary_points, p_idx[0]*np.ones(1, dtype=int))
-                if (p2**2).sum() >= r2:
-                    self.cbflg[p_idx[1]] = True
-                    self.boundary_points = np.append(self.boundary_points, p_idx[1]*np.ones(1, dtype=int))
-                if (p3**2).sum() >= r2:
-                    self.cbflg[p_idx[2]] = True
-                    self.boundary_points = np.append(self.boundary_points, p_idx[2]*np.ones(1, dtype=int))
-        
-        self.boundary_points = np.unique(self.boundary_points)
-        print('# boundary points including cavity=', self.boundary_points.size)
-
-        for p_idx in self.boundary_points:
-            self.bflg[p_idx] = True
-
-        # map point index to vectors and matrix index
-        self.pmap = -np.ones(self.tri.npoints, dtype=int)
-
-        idx = 0
-        for i in range(self.tri.npoints):
-            if self.pflg[i]:
-                self.pmap[i] = idx
-                idx += 1
-                
-        # map vectors and matrix index to point index 
-        # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
-                
-
 # FEM Poisson 2D solver class
 class FEheat2D:
+    """
+    class for 2D Poisson equation solver with finite element method
+
+    ...
+
+    Attributes
+    ----------
+        gte : GenericTriElement
+            Class for 2D basis for a triangular element
+        gauss_quad : GaussianQuadratureTri
+            Gaussian integration class
+        mesh : Mesh
+            Mesh for computational domain
+        n_elements : int 
+            Number of simplex in Delaunay triangulation
+        n_points : int
+            Number of points in Delaunay triangulation
+        f : function
+            R.H.S function
+        dt : float
+            Time step size for integration
+        M : numpy.ndarray
+            Mass matrix
+        Minv : numpy.ndarray
+            Inverse of mass matrix
+        K : numpy.ndarray
+            Stiffness matrix
+        I : numpy.ndarray
+            Identity matrix
+        s : numpy.ndarray
+            Source vector
+        A : numpy.ndarray
+            A matrix of A u = b
+        b : numpy.ndarray
+            b vector of A u = b
+        u : numpy.ndarray
+            Solution of A u = b
+        points_to_solve : numpy.ndarray
+            Index of points to solve for u
+        sparse : bool
+            True: use sparse matrix solver, False: use dense matrix solver
+        gpu : bool
+            True: use GPU matrix solver, False: use CPU matrix solver
+        mp : CuPy function
+            Get default memory pool
+        pp : CuPy function
+            Get default pinned memory pool    
+        A_d : cupy.ndarray
+            GPU A matrix of A u = b
+        b_d : cupy.ndarray
+            GPU b vector of A u = b
+        u_d : cupy.ndarray
+            GPU solution of A u = b
+        
+    Methods
+    -------
+    calc_local_update(self, p1, p2, p3):
+        Calculate the Jacobian, its determinant, and inverse
+    set_K_M(self):
+        Calculate the global mass and stiffness matrix
+    set_s(self):
+        Calculate the global source vector
+    set_boundary_conditions_dirichlet(self):
+        Set Dirichlet boundary conditions
+    set_boundary_conditions_neumann(self):
+        Set Neumann boundary conditions
+    initialze(self):
+        Initialize the mass, stiffness matrix and source vector
+    solve(self):
+        Solve A u = b    
+    """     
     def __init__(self, _mesh, _f, _u=None, _gpu=False, _sparse=False):
+        """
+        Parameters
+        ----------
+        _mesh : Mesh
+            Mesh for computational domain
+        _f : function
+            R.H.S function
+        _u : numpy.ndarray
+            Initial guess
+        _gpu : bool
+            True: use GPU matrix solver, False: use CPU matrix solver, default CPU
+        _sparse : bool
+            True: use sparse matrix solver, False: use dense matrix solver, default Dense
+        """        
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 
@@ -139,6 +140,12 @@ class FEheat2D:
 
     # @staticmethod
     def calc_local_update(self, p1, p2, p3):
+        """
+        Parameters
+        ----------
+        p1, p2, p3: numpy.ndarray
+            Coordinates of a triangle
+        """
         # Calculate the Jacobian, its determinant, and inverse
         j11 = p1[0] - p3[0]  # x_1 - x_3
         j12 = p1[1] - p3[1]  # y_1 - y_3
@@ -170,6 +177,10 @@ class FEheat2D:
         return K_local, M_local, b_local
 
     def set_K_M(self):
+        """
+        Parameters
+        ----------
+        """
         # Calculate the global matrix solution
         for i, el_ps in enumerate(self.mesh.tri.simplices):
             if self.mesh.sflg[i]:
@@ -189,6 +200,10 @@ class FEheat2D:
                 self.M[rows, columns] += M_local
 
     def set_s(self):
+        """
+        Parameters
+        ----------
+        """
         # Calculate the global matrix solution
         for i, el_ps in enumerate(self.mesh.tri.simplices):
             if self.mesh.sflg[i]:
@@ -207,6 +222,10 @@ class FEheat2D:
 
 
     def set_boundary_conditions_dirichlet(self):
+        """
+        Parameters
+        ----------
+        """
         # Set Dirichlet boundary conditions
         u_temp = np.zeros_like(self.b)
         for key, value in self.mesh.bc_points["dirichlet"].items():
@@ -215,6 +234,10 @@ class FEheat2D:
         self.b -= self.A @ u_temp
 
     def set_boundary_conditions_neumann(self):
+        """
+        Parameters
+        ----------
+        """
         # Set Neumann boundary conditions
         for ch_idx, du_values in self.mesh.bc_points["neumann_edge"].items():
             # convex_hull is a list with pair of point indices
@@ -227,7 +250,10 @@ class FEheat2D:
                 self.s[self.mesh.pmap[p_idx]] += 0.5 * distance * du_value  # du_boundary
 
     def initialze(self):
-        
+        """
+        Parameters
+        ----------
+        """
         # Initialize the K, M and b
         self.K = np.zeros((self.n_points, self.n_points))
         self.M = np.zeros((self.n_points, self.n_points))
@@ -257,7 +283,10 @@ class FEheat2D:
         self.set_boundary_conditions_neumann()
 
     def solve(self):
-
+        """
+        Parameters
+        ----------
+        """
         # RHS
         self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
 

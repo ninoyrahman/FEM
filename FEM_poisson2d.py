@@ -23,7 +23,7 @@ class FEPoisson2D:
         n_elements : int 
             Number of simplex in Delaunay triangulation
         n_points : int
-            Number of simplex in Delaunay triangulation
+            Number of points in Delaunay triangulation
         f : function
             R.H.S function
         A : numpy.ndarray
