@@ -14,39 +14,39 @@ class FEPoisson2D:
 
     Attributes
     ----------
-        gte = GenericTriElement
+        gte : GenericTriElement
             class for 2D basis for a triangular element
-        gauss_quad = GaussianQuadratureTri
+        gauss_quad : GaussianQuadratureTri
             Gaussian integration class
-        mesh = Mesh
-            mesh for computational domain
-        n_elements = int 
-            number of simplex in Delaunay triangulation
-        n_points = int
-            number of simplex in Delaunay triangulation
-        f = function
+        mesh : Mesh
+            Mesh for computational domain
+        n_elements : int 
+            Number of simplex in Delaunay triangulation
+        n_points : int
+            Number of simplex in Delaunay triangulation
+        f : function
             R.H.S function
-        A = numpy.ndarray
+        A : numpy.ndarray
             A matrix of A u = b
-        b = numpy.ndarray
+        b : numpy.ndarray
             b vector of A u = b
-        u = numpy.ndarray
-            solution of A u = b
-        points_to_solve = numpy.ndarray
-            index of points to solve for u
-        sparse = bool
+        u : numpy.ndarray
+            Solution of A u = b
+        points_to_solve : numpy.ndarray
+            Index of points to solve for u
+        sparse : bool
             True: use sparse matrix solver, False: use dense matrix solver
-        gpu = bool
+        gpu : bool
             True: use GPU matrix solver, False: use CPU matrix solver
-        mp = CuPy function
-            get default memory pool
-        pp = CuPy function
-            get default pinned memory pool    
-        A_d = cupy.ndarray
+        mp : CuPy function
+            Get default memory pool
+        pp : CuPy function
+            Get default pinned memory pool    
+        A_d : cupy.ndarray
             GPU A matrix of A u = b
-        b_d = cupy.ndarray
+        b_d : cupy.ndarray
             GPU b vector of A u = b
-        u_d = cupy.ndarray
+        u_d : cupy.ndarray
             GPU solution of A u = b
         
     Methods
@@ -56,27 +56,25 @@ class FEPoisson2D:
     set_A_b(self)
         Calculate the global matrix solution
     set_boundary_conditions(self):
-        Set Dirichlet boundary conditions
-    set_boundary_conditions(self):
-        Set Dirichlet boundary conditions
+        Set Dirichlet and Neumann boundary conditions
     process(self):
         Initialize the A and b
     solve(self):
         Solve A u = b    
-    """      
+    """
     def __init__(self, _mesh, _f, _gpu=False, _sparse=False):
         """
         Parameters
         ----------
         _mesh : Mesh
-            mesh for computational domain
+            Mesh for computational domain
         _f = function
             R.H.S function
         _gpu = bool
             True: use GPU matrix solver, False: use CPU matrix solver, default CPU
         _sparse = bool
             True: use sparse matrix solver, False: use dense matrix solver, default Dense
-        """        
+        """
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 
@@ -110,8 +108,8 @@ class FEPoisson2D:
         Parameters
         ----------
         p1, p2, p3: numpy.ndarray
-            coordinates of a triangle
-        """        
+            Coordinates of a triangle
+        """
         # Calculate the Jacobian, its determinant, and inverse
         j11 = p1[0] - p3[0]  # x_1 - x_3
         j12 = p1[1] - p3[1]  # y_1 - y_3
@@ -141,7 +139,7 @@ class FEPoisson2D:
         """
         Parameters
         ----------
-        """        
+        """
         # Calculate the global matrix solution
         for i, el_ps in enumerate(self.mesh.tri.simplices):
             # Extract element's nodes
@@ -162,7 +160,7 @@ class FEPoisson2D:
         """
         Parameters
         ----------
-        """        
+        """
         # Set Dirichlet boundary conditions
         u_temp = np.zeros_like(self.b)
         for key, value in self.mesh.bc_points["dirichlet"].items():
@@ -183,7 +181,7 @@ class FEPoisson2D:
         """
         Parameters
         ----------
-        """           
+        """
         # Initialize the A and b
         self.A = np.zeros((self.n_points, self.n_points))
         self.b = np.zeros((self.n_points, 1))
@@ -206,7 +204,7 @@ class FEPoisson2D:
         """
         Parameters
         ----------
-        """        
+        """
         # Initialize u
         self.u = np.zeros_like(self.b)
 

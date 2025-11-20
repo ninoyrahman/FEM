@@ -8,7 +8,92 @@ from FEM_mesh import Mesh
 
 # FEM Poisson 2D solver class
 class FEheat2D:
+"""
+    class for 2D Poisson equation solver with finite element method
+
+    ...
+
+    Attributes
+    ----------
+        gte : GenericTriElement
+            Class for 2D basis for a triangular element
+        gauss_quad : GaussianQuadratureTri
+            Gaussian integration class
+        mesh : Mesh
+            Mesh for computational domain
+        n_elements : int 
+            Number of simplex in Delaunay triangulation
+        n_points : int
+            Number of simplex in Delaunay triangulation
+        f : function
+            R.H.S function
+        dt : float
+            Time step size for integration
+        M : numpy.ndarray
+            Mass matrix
+        Minv : numpy.ndarray
+            Inverse of mass matrix
+        K : numpy.ndarray
+            Stiffness matrix
+        I : numpy.ndarray
+            Identity matrix
+        s : numpy.ndarray
+            Source vector
+        A : numpy.ndarray
+            A matrix of A u = b
+        b : numpy.ndarray
+            b vector of A u = b
+        u : numpy.ndarray
+            Solution of A u = b
+        points_to_solve : numpy.ndarray
+            Index of points to solve for u
+        sparse : bool
+            True: use sparse matrix solver, False: use dense matrix solver
+        gpu : bool
+            True: use GPU matrix solver, False: use CPU matrix solver
+        mp : CuPy function
+            Get default memory pool
+        pp : CuPy function
+            Get default pinned memory pool    
+        A_d : cupy.ndarray
+            GPU A matrix of A u = b
+        b_d : cupy.ndarray
+            GPU b vector of A u = b
+        u_d : cupy.ndarray
+            GPU solution of A u = b
+        
+    Methods
+    -------
+    calc_local_update(self, p1, p2, p3):
+        Calculate the Jacobian, its determinant, and inverse
+    set_K_M(self):
+        Calculate the global mass and stiffness matrix
+    set_s(self):
+        Calculate the global source vector
+    set_boundary_conditions_dirichlet(self):
+        Set Dirichlet boundary conditions
+    set_boundary_conditions_neumann(self):
+        Set Neumann boundary conditions
+    initialze(self):
+        Initialize the mass, stiffness matrix and source vector
+    solve(self):
+        Solve A u = b    
+    """    
     def __init__(self, _mesh, _f, _u=None, _gpu=False, _sparse=False):
+        """
+        Parameters
+        ----------
+        _mesh : Mesh
+            Mesh for computational domain
+        _f : function
+            R.H.S function
+        _u : numpy.ndarray
+            Initial guess
+        _gpu : bool
+            True: use GPU matrix solver, False: use CPU matrix solver, default CPU
+        _sparse : bool
+            True: use sparse matrix solver, False: use dense matrix solver, default Dense
+        """         
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
 
@@ -52,6 +137,12 @@ class FEheat2D:
 
     # @staticmethod
     def calc_local_update(self, p1, p2, p3):
+        """
+        Parameters
+        ----------
+        p1, p2, p3: numpy.ndarray
+            Coordinates of a triangle
+        """
         # Calculate the Jacobian, its determinant, and inverse
         j11 = p1[0] - p3[0]  # x_1 - x_3
         j12 = p1[1] - p3[1]  # y_1 - y_3
@@ -83,7 +174,11 @@ class FEheat2D:
         return K_local, M_local, b_local
 
     def set_K_M(self):
-        # Calculate the global matrix solution
+        """
+        Parameters
+        ----------
+        """     
+        # Calculate the global mass and stiffness matrix
         for i, el_ps in enumerate(self.mesh.tri.simplices):
             # Extract element's nodes
             p1, p2, p3 = (self.mesh.tri.points[el_ps[0]],
@@ -100,7 +195,11 @@ class FEheat2D:
             self.M[rows, columns] += M_local
 
     def set_s(self):
-        # Calculate the global matrix solution
+        """
+        Parameters
+        ----------
+        """        
+        # Calculate the global source vector
         for i, el_ps in enumerate(self.mesh.tri.simplices):
             # Extract element's nodes
             p1, p2, p3 = (self.mesh.tri.points[el_ps[0]],
@@ -116,6 +215,10 @@ class FEheat2D:
 
 
     def set_boundary_conditions_dirichlet(self):
+        """
+        Parameters
+        ----------
+        """        
         # Set Dirichlet boundary conditions
         u_temp = np.zeros_like(self.b)
         for key, value in self.mesh.bc_points["dirichlet"].items():
@@ -123,6 +226,10 @@ class FEheat2D:
         self.b -= self.A @ u_temp
 
     def set_boundary_conditions_neumann(self):
+        """
+        Parameters
+        ----------
+        """        
         # Set Neumann boundary conditions
         for ch_idx, du_values in self.mesh.bc_points["neumann_edge"].items():
             # convex_hull is a list with pair of point indices
@@ -134,8 +241,13 @@ class FEheat2D:
                 self.s[p_idx] += 0.5 * distance * du_value  # du_boundary
 
     def initialze(self):
-        
-        # Initialize the K, M and b
+        """
+        Parameters
+        ----------
+        p1, p2, p3: numpy.ndarray
+            coordinates of a triangle
+        """        
+        # Initialize the mass, stiffness matrix and source vector
         self.K = np.zeros((self.n_points, self.n_points))
         self.M = np.zeros((self.n_points, self.n_points))
         self.b = np.zeros((self.n_points, 1))
@@ -164,18 +276,15 @@ class FEheat2D:
         self.set_boundary_conditions_neumann()
 
     def solve(self):
-
+        """
+        Parameters
+        ----------
+        """
         # RHS
         self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
 
         # apply boundary conditions Dirichlet
-        self.set_boundary_conditions_dirichlet()  
-
-        # # Exclude known u from the Dirichlet boundary condition
-        # points_to_solve = []
-        # for p_idx in range(self.mesh.tri.npoints):
-        #     if p_idx not in self.mesh.bc_points["dirichlet"]:
-        #         points_to_solve.append(p_idx)
+        self.set_boundary_conditions_dirichlet()
                 
         # Solve u = A^-1 * b
         if not self.gpu:
