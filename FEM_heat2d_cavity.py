@@ -149,8 +149,6 @@ class FEheat2D:
         print('Solving using GPU:', self.gpu)
         print('Solving using sparse matrix:', self.sparse)
 
-        # print(self.M.shape, self.Minv.shape, self.K.shape, self.I.shape, self.A.shape, self.s.shape, self.b.shape, self.u.shape)
-
     # @staticmethod
     def calc_local_update(self, p1, p2, p3):
         """
@@ -206,7 +204,6 @@ class FEheat2D:
                 K_local, M_local, _ = self.calc_local_update(p1, p2, p3)
     
                 # Assemble element's matrix solution into global matrix
-                # columns = np.array([el_ps for _ in range(3)])
                 columns = np.array([self.mesh.pmap[el_ps] for _ in range(3)])
                 rows = columns.T
                 self.K[rows, columns] += K_local
@@ -227,10 +224,8 @@ class FEheat2D:
     
                 # Store local element's solution
                 _, _, b_local = self.calc_local_update(p1, p2, p3)
-                # print(M_local)
     
                 # Assemble element's matrix solution into global matrix
-                # self.s[el_ps, 0] += b_local
                 self.s[self.mesh.pmap[el_ps], 0] += b_local
 
 
@@ -240,12 +235,8 @@ class FEheat2D:
         ----------
         """
         # Set Dirichlet boundary conditions
-        # u_temp = np.zeros_like(self.b)
         for key, value in self.mesh.bc_points["dirichlet"].items():
-            # u_temp[key] = value
-            # u_temp[self.mesh.pmap[key]] = value
             self.u_dirichlet[self.mesh.pmap[key]] = value
-        # self.b -= self.A @ u_temp
 
     def set_boundary_conditions_neumann(self):
         """
@@ -347,5 +338,4 @@ class FEheat2D:
 
         # Set the known
         for key, value in self.mesh.bc_points["dirichlet"].items():
-            # self.u[key] = value
             self.u[self.mesh.pmap[key]] = value
