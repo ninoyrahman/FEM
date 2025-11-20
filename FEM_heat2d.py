@@ -117,6 +117,7 @@ class FEheat2D:
         self.b = np.zeros((self.n_points, 1))
         self.s = np.zeros_like(self.b)
         self.q = np.zeros_like(self.b)
+        self.u_dirichlet = np.zeros_like(self.b)
         
         if _u is None:
             self.u = np.zeros_like(self.b)
@@ -135,7 +136,9 @@ class FEheat2D:
             self.pp = cp.get_default_pinned_memory_pool()
             
             self.A_d = cp.zeros((self.n_points, self.n_points))
+            self.C_d = cp.zeros((self.n_points, self.n_points))
             self.b_d = cp.zeros((self.n_points, 1))
+            self.q_d = cp.zeros_like(self.b_d)
             self.u_d = cp.zeros_like(self.b_d)
             self.points_to_solve_d = np.array([], dtype=np.int32)
 
@@ -215,7 +218,6 @@ class FEheat2D:
 
             # Store local element's solution
             _, _, b_local = self.calc_local_update(p1, p2, p3)
-            # print(M_local)
 
             # Assemble element's matrix solution into global matrix
             self.s[el_ps, 0] += b_local
@@ -227,10 +229,8 @@ class FEheat2D:
         ----------
         """        
         # Set Dirichlet boundary conditions
-        u_temp = np.zeros_like(self.b)
         for key, value in self.mesh.bc_points["dirichlet"].items():
-            u_temp[key] = value
-        self.b -= self.A @ u_temp
+            self.u_dirichlet[key] = value
 
     def set_boundary_conditions_neumann(self):
         """
@@ -283,8 +283,17 @@ class FEheat2D:
         # apply boundary conditions Neumann
         self.set_boundary_conditions_neumann()
 
+        # Calculate u_dirichlet entries
+        self.set_boundary_conditions_dirichlet()
+
         # Calculate q entries
-        self.q = self.dt * self.Minv @ self.s
+        self.q = self.dt * self.Minv @ self.s - self.A @ self.u_dirichlet
+
+        # host to device data transfer
+        if self.gpu:
+            cp.cuda.runtime.memcpy(self.A_d.data.ptr, self.A.ctypes.data, self.A.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+            cp.cuda.runtime.memcpy(self.C_d.data.ptr, self.C.ctypes.data, self.C.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+            cp.cuda.runtime.memcpy(self.q_d.data.ptr, self.q.ctypes.data, self.q.nbytes, cp.cuda.runtime.memcpyHostToDevice)
 
     def solve(self):
         """
@@ -293,13 +302,13 @@ class FEheat2D:
         """
         # RHS
         # self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
-        self.b = self.q + self.C @ self.u
-        
-        # apply boundary conditions Dirichlet
-        self.set_boundary_conditions_dirichlet()
                 
         # Solve u = A^-1 * b
         if not self.gpu:
+
+            # RHS
+            self.b = self.q + self.C @ self.u
+            
             if self.sparse:
                 A_sparse = sp.sparse.csr_matrix(self.A[self.points_to_solve, :][:, self.points_to_solve])
                 # self.u[self.points_to_solve, 0] = sp.sparse.linalg.spsolve(A_sparse, self.b[self.points_to_solve])
@@ -308,8 +317,8 @@ class FEheat2D:
                 self.u[self.points_to_solve] = sp.linalg.solve(self.A[self.points_to_solve, :][:, self.points_to_solve], self.b[self.points_to_solve])
         else:
             # host to device data transfer
-            cp.cuda.runtime.memcpy(self.A_d.data.ptr, self.A.ctypes.data, self.A.nbytes, cp.cuda.runtime.memcpyHostToDevice)
-            cp.cuda.runtime.memcpy(self.b_d.data.ptr, self.b.ctypes.data, self.b.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+            cp.cuda.runtime.memcpy(self.u_d.data.ptr, self.u.ctypes.data, self.u.nbytes, cp.cuda.runtime.memcpyHostToDevice)
+            self.b_d = self.q_d + self.C_d @ self.u_d
 
             # solve
             if self.sparse:
@@ -321,13 +330,6 @@ class FEheat2D:
             
             # device to host data transfer
             cp.cuda.runtime.memcpy(self.u.ctypes.data, self.u_d.data.ptr, self.u_d.nbytes, cp.cuda.runtime.memcpyDeviceToHost)
-
-            # Inspect pool usage
-            # print(f"Used: {self.mp.used_bytes() / 1e6:.2f} MB")
-            # print(f"Total allocated: {self.mp.total_bytes() / 1e6:.2f} MB")
-            
-            # Free unused blocks back to OS
-            self.mp.free_all_blocks()
 
         # Set the known
         for key, value in self.mesh.bc_points["dirichlet"].items():
