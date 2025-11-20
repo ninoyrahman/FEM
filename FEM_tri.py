@@ -3,7 +3,34 @@ import numpy as np
 
 # Triangle class
 class GenericTriElement:
+    """
+    class for 2D basis for a triangular element
+
+    ...
+
+    Attributes
+    ----------
+        
+    Methods
+    -------
+    N1(xi, eta)
+        N1 basis
+        
+    N2(xi, eta)
+        N2 basis
+        
+    N3(xi, eta)
+        N3 basis
+
+    get_xy(self, xi, eta, p1, p2, p3)
+        Coordinate transformation local to global
+    """     
     def __init__(self):
+        """
+        Parameters
+        ----------
+
+        """             
         # Shape functions derivatives in a local triangular element
         N1_dxi = 1
         N2_dxi = 0
@@ -18,24 +45,76 @@ class GenericTriElement:
 
     @staticmethod
     def N1(xi, eta):
+        """
+        Parameters
+        ----------
+        xi : float
+            local coordinate
+        eta : float
+            local coordinate
+        """           
         return xi
 
     @staticmethod
     def N2(xi, eta):
+        """
+        Parameters
+        ----------
+        xi : float
+            local coordinate
+        eta : float
+            local coordinate
+        """          
         return eta
 
     @staticmethod
     def N3(xi, eta):
+        """
+        Parameters
+        ----------
+        xi : float
+            local coordinate
+        eta : float
+            local coordinate
+        """          
         return 1 - xi - eta
 
     # Coordinate transformation local to global
     def get_xy(self, xi, eta, p1, p2, p3):
+        """
+        Parameters
+        ----------
+        xi : float
+            local coordinate
+        eta : float
+            local coordinate
+        p1, p2, p3: float(2)
+            coordinates of a triangle
+        """           
         return (p1[0] * self.N1(xi, eta) + p2[0] * self.N2(xi, eta) + p3[0] * self.N3(xi, eta),
                 p1[1] * self.N1(xi, eta) + p2[1] * self.N2(xi, eta) + p3[1] * self.N3(xi, eta))
 
-# Gaussian integration class
+
 class GaussianQuadratureTri:
+    """
+    class for Gaussian integration class
+
+    ...
+
+    Attributes
+    ----------
+        
+    Methods
+    -------
+    calculate(self, _f, p1, p2, p3)
+        Calculate the numerical integration for each node
+    """     
+    
     def __init__(self):
+        """
+        Parameters
+        ----------
+        """           
         # nip = 3 # number of integration points
         self.wps = [(0.5, 0.5), (0.5, 0), (0, 0.5)]  # weighted points
         self.ws = (1 / 6, 1 / 6, 1 / 6)              # weights
@@ -43,6 +122,14 @@ class GaussianQuadratureTri:
 
     # Calculate the numerical integration for each node
     def calculate(self, _f, p1, p2, p3):
+        """
+        Parameters
+        ----------
+        _f : function
+            R.H.S
+        p1, p2, p3: float(2)
+            coordinates of a triangle
+        """            
         # Get the global (x,y) coordinates at the weighted points
         xys = [self.tri_element.get_xy(wp[0], wp[1], p1, p2, p3) for wp in self.wps]
 
