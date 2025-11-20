@@ -39,8 +39,12 @@ class FEheat2D:
             Identity matrix
         s : numpy.ndarray
             Source vector
+        q : numpy.ndarray
+            q vector, q = dt * Minv * s
         A : numpy.ndarray
             A matrix of A u = b
+        C : numpy.ndarray
+            C matrix, C = I - dt/2 * Minv * K
         b : numpy.ndarray
             b vector of A u = b
         u : numpy.ndarray
@@ -109,8 +113,11 @@ class FEheat2D:
         self.I = np.eye(self.n_points)
 
         self.A = np.zeros((self.n_points, self.n_points))
+        self.C = np.zeros((self.n_points, self.n_points))
         self.b = np.zeros((self.n_points, 1))
         self.s = np.zeros_like(self.b)
+        self.q = np.zeros_like(self.b)
+        
         if _u is None:
             self.u = np.zeros_like(self.b)
         else:
@@ -266,14 +273,18 @@ class FEheat2D:
         # Inverse mass matrix
         self.Minv = np.linalg.inv(self.M)
 
-        # Calculate A entries
+        # Calculate A and C entries
         self.A = self.I + (self.dt/2.0) * self.Minv @ self.K
-
-         # print('Evaluate source matrix')
+        self.C = self.I - (self.dt/2.0) * self.Minv @ self.K
+        
+         # Evaluate source matrix
         self.set_s()
 
         # apply boundary conditions Neumann
         self.set_boundary_conditions_neumann()
+
+        # Calculate q entries
+        self.q = self.dt * self.Minv @ self.s
 
     def solve(self):
         """
@@ -281,8 +292,9 @@ class FEheat2D:
         ----------
         """
         # RHS
-        self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
-
+        # self.b = self.dt * self.Minv @ self.s + (self.I - (self.dt/2.0) * self.Minv @ self.K) @ self.u
+        self.b = self.q + self.C @ self.u
+        
         # apply boundary conditions Dirichlet
         self.set_boundary_conditions_dirichlet()
                 
