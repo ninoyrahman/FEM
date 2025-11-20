@@ -88,7 +88,7 @@ class GenericTriElement:
             local coordinate
         eta : float
             local coordinate
-        p1, p2, p3: float(2)
+        p1, p2, p3: numpy.ndarray
             coordinates of a triangle
         """           
         return (p1[0] * self.N1(xi, eta) + p2[0] * self.N2(xi, eta) + p3[0] * self.N3(xi, eta),
@@ -97,7 +97,7 @@ class GenericTriElement:
 
 class GaussianQuadratureTri:
     """
-    class for Gaussian integration class
+    class for Gaussian integration
 
     ...
 
@@ -127,7 +127,7 @@ class GaussianQuadratureTri:
         ----------
         _f : function
             R.H.S
-        p1, p2, p3: float(2)
+        p1, p2, p3: numpy.ndarray
             coordinates of a triangle
         """            
         # Get the global (x,y) coordinates at the weighted points
