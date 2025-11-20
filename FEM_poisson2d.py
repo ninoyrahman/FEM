@@ -5,31 +5,6 @@ import cupy as cp
 import cupyx.scipy as cps
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
 
-# Mesh class
-class Mesh:
-    def __init__(self, x_min, x_max, n_x, y_min, y_max, y_n):
-        # Create a list with points coordinate (x,y)
-        points = []
-        nodes_x = np.linspace(x_min, x_max, n_x)
-        nodes_y = np.linspace(y_min, y_max, y_n)
-        for nx in nodes_x:
-            for ny in nodes_y:
-                points.append([nx, ny])
-        points = np.array(points)
-        self.points = points
-
-        # Create Delaunay object
-        self.tri = sp.spatial.Delaunay(points)
-
-        # Identify the boundary points
-        self.boundary_points = np.unique(self.tri.convex_hull.flatten())
-
-        # Initialize the boundary conditions dictionary
-        self.bc_points = {
-            "dirichlet": dict(),
-            "neumann_edge": dict()
-        }
-
 # FEM Poisson 2D solver class
 class FEPoisson2D:
     def __init__(self, _mesh, _f, _gpu=False, _sparse=False):
