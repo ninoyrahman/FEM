@@ -392,3 +392,163 @@ class Mesh_cavity_outline:
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
+
+class Mesh_ns:
+    """
+    class for Mesh generator for square or circular plate
+
+    ...
+
+    Attributes
+    ----------
+        points : float
+            grid points
+        tri : float
+            Delaunay triangles
+        boundary_points : float
+            boundary points index
+        bc_points : float
+            dict for dirichlet boundary points and neumann boundary edges for pressure
+        bc_points_u : float
+            dict for dirichlet boundary points and neumann boundary edges for velocity
+        bc_points_v : float
+            dict for dirichlet boundary points and neumann boundary edges for velocity
+    
+    Methods
+    -------
+    
+    """    
+    def __init__(self, x_min, x_max, n_x, y_min, y_max, n_y, rout=None):
+        """
+        Parameters
+        ----------
+        x_min : float
+            x-axes minimum
+        x_max : float
+            x-axes maximum
+        n_x : int
+            number of points along x-axes
+        y_min : float
+            y-axes minimum
+        y_max : float
+            y-axes maximum
+        n_y : int
+            number of points along y-axes
+        rout : float, optional
+            outer radius of circular plate, None for square plate
+        """
+        # Create a list with points coordinate (x,y)
+        points = []
+        nodes_x = np.linspace(x_min, x_max, n_x)
+        nodes_y = np.linspace(y_min, y_max, n_y)
+        
+        for x in nodes_x:
+            for y in nodes_y:
+                if rout is None: # square plate
+                    points.append([x, y])
+                else: # circular plate
+                    if x**2 + y**2 <= rout**2:
+                        points.append([x, y])
+                        
+        points = np.array(points)
+        self.points = points
+
+        # Create Delaunay object
+        self.tri = sp.spatial.Delaunay(points)
+
+        # Identify the boundary points
+        self.boundary_points = np.unique(self.tri.convex_hull.flatten())
+
+        # Initialize the boundary conditions dictionary
+        self.bc_points_p = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_u = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_v = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+
+class Mesh_from_outline_ns:
+    """
+    class for Mesh generator with outer boundary outline points
+
+    ...
+
+    Attributes
+    ----------
+        points : float
+            grid points
+        tri : float
+            Delaunay triangles
+        boundary_points : float
+            boundary points index
+        bc_points : float
+            dict for dirichlet boundary points and neumann boundary edges for pressure
+        bc_points_u : float
+            dict for dirichlet boundary points and neumann boundary edges for velocity
+        bc_points_v : float
+            dict for dirichlet boundary points and neumann boundary edges for velocity
+    
+    Methods
+    -------
+    
+    """    
+    def __init__(self, x_min, x_max, n_x, y_min, y_max, n_y, outline):
+        """
+        Parameters
+        ----------
+        x_min : float
+            x-axes minimum
+        x_max : float
+            x-axes maximum
+        n_x : int
+            number of points along x-axes
+        y_min : float
+            y-axes minimum
+        y_max : float
+            y-axes maximum
+        n_y : int
+            number of points along y-axes
+        outline : numpy.ndarray
+            outer boundary outline points
+        """
+        # Create a list with points coordinate (x,y)
+        points = []
+        nodes_x = np.linspace(x_min, x_max, n_x)
+        nodes_y = np.linspace(y_min, y_max, n_y)
+
+        polygon = shp.geometry.polygon.Polygon(outline)
+        
+        for x in nodes_x:
+            for y in nodes_y:
+                point = shp.geometry.Point(x, y)
+                if polygon.contains(point):
+                    points.append([x, y])
+                        
+        points = np.array(points)
+        self.points = points
+
+        # Create Delaunay object
+        self.tri = sp.spatial.Delaunay(points)
+
+        # Identify the boundary points
+        self.boundary_points = np.unique(self.tri.convex_hull.flatten())
+
+        # Initialize the boundary conditions dictionary
+        self.bc_points_p = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_u = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_v = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }

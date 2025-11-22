@@ -7,7 +7,7 @@ import numpy as np
 
 def plot3d(ax, data, varmin, varmax, x, y, label=r'u', cmap=cm.coolwarm, azim=130):
     var = np.array(data, copy=True)
-    lrange = np.linspace(varmin, varmax, 11)
+    lrange = np.linspace(varmin, varmax, 6)
     var[var < varmin] = varmin
     var[var > varmax] = varmax
 
