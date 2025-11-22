@@ -497,8 +497,9 @@ class Mesh_from_outline_ns:
     Methods
     -------
     
-    """    
+    """
     def __init__(self, x_min, x_max, n_x, y_min, y_max, n_y, outline):
+    # def __init__(self, _points, _outline): 
         """
         Parameters
         ----------
@@ -522,6 +523,7 @@ class Mesh_from_outline_ns:
         nodes_x = np.linspace(x_min, x_max, n_x)
         nodes_y = np.linspace(y_min, y_max, n_y)
 
+        # outline = np.round(_outline, 3)
         polygon = shp.geometry.polygon.Polygon(outline)
         
         for x in nodes_x:
@@ -529,7 +531,13 @@ class Mesh_from_outline_ns:
                 point = shp.geometry.Point(x, y)
                 if polygon.contains(point):
                     points.append([x, y])
-                        
+
+        # for x, y in _points:
+        #     point = shp.geometry.Point(x, y)
+        #     # print(x, y, end=', ')
+        #     if polygon.contains(point):
+        #         points.append([x, y])
+            
         points = np.array(points)
         self.points = points
 

@@ -484,13 +484,20 @@ class FENS2D:
             if p_idx not in self.mesh.bc_points_p["dirichlet"]:
                 self.points_to_solve = np.append(self.points_to_solve, p_idx)
 
+        # assign points to solve
         for p_idx in range(self.mesh.tri.npoints):
             if p_idx not in self.mesh.bc_points_u["dirichlet"]:
                 self.points_to_solve_u = np.append(self.points_to_solve_u, p_idx)
 
+        # assign points to solve
         for p_idx in range(self.mesh.tri.npoints):
             if p_idx not in self.mesh.bc_points_v["dirichlet"]:
                 self.points_to_solve_v = np.append(self.points_to_solve_v, p_idx)
+
+        if self.gpu:
+            self.points_to_solve_d   = cp.asarray(self.points_to_solve)
+            self.points_to_solve_u_d = cp.asarray(self.points_to_solve_u)
+            self.points_to_solve_v_d = cp.asarray(self.points_to_solve_v)
         
         # Calculate K and M entries
         self.set_K_M()
@@ -504,7 +511,7 @@ class FENS2D:
         # apply Neumann boundary conditions
         self.set_boundary_conditions_neumann()
 
-        # apply Dirichlet boundary conditions Neumann
+        # apply dirichlet boundary conditions Neumann
         self.set_boundary_conditions_dirichlet()
 
         # Calculate q entries
@@ -528,9 +535,6 @@ class FENS2D:
 
         # host to device data transfer
         if self.gpu:
-            self.points_to_solve_d   = cp.asarray(self.points_to_solve)
-            self.points_to_solve_u_d = cp.asarray(self.points_to_solve_u)
-            self.points_to_solve_v_d = cp.asarray(self.points_to_solve_v)
 
             cp.cuda.runtime.memcpy(self.u_d.data.ptr, self.u.ctypes.data, self.u.nbytes, cp.cuda.runtime.memcpyHostToDevice)
             cp.cuda.runtime.memcpy(self.v_d.data.ptr, self.v.ctypes.data, self.v.nbytes, cp.cuda.runtime.memcpyHostToDevice)
