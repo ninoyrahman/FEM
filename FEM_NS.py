@@ -4,7 +4,7 @@ import scipy as sp
 import cupy as cp
 import cupyx.scipy as cps
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
-from FEM_mesh import Mesh_ns
+# from FEM_mesh import Mesh_ns
 
 # FEM Poisson 2D solver class
 class FENS2D:
@@ -565,6 +565,7 @@ class FENS2D:
         ----------
         """
 
+        self.time_step_size()
         dt_2 = self.dt / 2.0
         
         self.set_E()
