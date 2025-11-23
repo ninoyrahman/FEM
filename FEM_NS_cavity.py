@@ -81,9 +81,12 @@ class FENS2D:
             intermediate x-velocity
         v_star : numpy.ndarray
             intermediate y-velocity
-        
         points_to_solve : numpy.ndarray
+            Index of points to solve for p
+        points_to_solve_u : cupy.ndarray
             Index of points to solve for u
+        points_to_solve_v : cupy.ndarray
+            Index of points to solve for v   
         sparse : bool
             True: use sparse matrix solver, False: use dense matrix solver
         gpu : bool
@@ -186,7 +189,6 @@ class FENS2D:
 
         self.mesh = _mesh
         self.n_elements = self.mesh.tri.nsimplex
-        # self.n_points = self.mesh.tri.npoints
         self.n_points = self.mesh.npoints
 
         self.f = _f
@@ -365,7 +367,6 @@ class FENS2D:
             K_local, M_local, _, G_local, H_local = self.calc_local_update(p1, p2, p3)
 
             # Assemble element's matrix solution into global matrix
-            # columns = np.array([el_ps for _ in range(3)])
             columns = np.array([self.mesh.pmap[el_ps] for _ in range(3)])
             rows = columns.T
             self.K[rows, columns] += K_local
@@ -405,7 +406,6 @@ class FENS2D:
             E_local = ubar @ ybar - vbar @ xbar
 
             # Assemble element's matrix solution into global matrix
-            # columns = np.array([el_ps for _ in range(3)])
             columns = np.array([self.mesh.pmap[el_ps] for _ in range(3)])
             rows = columns.T
             self.E[rows, columns] += E_local
@@ -426,7 +426,6 @@ class FENS2D:
             _, _, b_local, _, _ = self.calc_local_update(p1, p2, p3)
 
             # Assemble element's matrix solution into global matrix
-            # self.s[el_ps, 0] += b_local
             self.s[self.mesh.pmap[el_ps], 0] += b_local
 
 
@@ -437,13 +436,10 @@ class FENS2D:
         """        
         # Set Dirichlet boundary conditions
         for key, value in self.mesh.bc_points_u["dirichlet"].items():
-            # self.u_dirichlet[key] = value
             self.u_dirichlet[self.mesh.pmap[key]] = value
         for key, value in self.mesh.bc_points_v["dirichlet"].items():
-            # self.v_dirichlet[key] = value
             self.v_dirichlet[self.mesh.pmap[key]] = value
         for key, value in self.mesh.bc_points_p["dirichlet"].items():
-            # self.p_dirichlet[key] = value
             self.p_dirichlet[self.mesh.pmap[key]] = value
 
     def set_boundary_conditions_neumann(self):
@@ -459,7 +455,6 @@ class FENS2D:
             distance = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             # Store the line integral in vector b
             for p_idx, du_value in zip(ch_points, du_values):
-                # self.su[p_idx] += 0.5 * distance * du_value  # du_boundary
                 self.su[self.mesh.pmap[p_idx]] += 0.5 * distance * du_value  # du_boundary
 
         for ch_idx, du_values in self.mesh.bc_points_v["neumann_edge"].items():
@@ -469,7 +464,6 @@ class FENS2D:
             distance = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             # Store the line integral in vector b
             for p_idx, du_value in zip(ch_points, du_values):
-                # self.sv[p_idx] += 0.5 * distance * du_value  # du_boundary
                 self.sv[self.mesh.pmap[p_idx]] += 0.5 * distance * du_value  # du_boundary
 
         for ch_idx, du_values in self.mesh.bc_points_p["neumann_edge"].items():
@@ -479,7 +473,6 @@ class FENS2D:
             distance = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             # Store the line integral in vector b
             for p_idx, du_value in zip(ch_points, du_values):
-                # self.s[p_idx]  += 0.5 * distance * du_value  # du_boundary
                 self.s[self.mesh.pmap[p_idx]]  += 0.5 * distance * du_value  # du_boundary
 
     def initialze(self):
@@ -493,19 +486,16 @@ class FENS2D:
         counter = 0
         for p_idx in range(self.mesh.tri.npoints):
             if p_idx not in self.mesh.bc_points_p["dirichlet"] and self.mesh.pflg[p_idx]:
-                # self.points_to_solve = np.append(self.points_to_solve, p_idx)
                 self.points_to_solve = np.append(self.points_to_solve, self.mesh.pmap[p_idx])
 
         # assign points to solve
         for p_idx in range(self.mesh.tri.npoints):
             if p_idx not in self.mesh.bc_points_u["dirichlet"] and self.mesh.pflg[p_idx]:
-                # self.points_to_solve_u = np.append(self.points_to_solve_u, p_idx)
                 self.points_to_solve_u = np.append(self.points_to_solve_u, self.mesh.pmap[p_idx])
 
         # assign points to solve
         for p_idx in range(self.mesh.tri.npoints):
             if p_idx not in self.mesh.bc_points_v["dirichlet"] and self.mesh.pflg[p_idx]:
-                # self.points_to_solve_v = np.append(self.points_to_solve_v, p_idx)
                 self.points_to_solve_v = np.append(self.points_to_solve_v, self.mesh.pmap[p_idx])
 
         if self.gpu:
@@ -539,17 +529,12 @@ class FENS2D:
 
         # Set the known
         for key, value in self.mesh.bc_points_u["dirichlet"].items():
-            # self.u[key] = value
-            # self.u_star[key] = value
             self.u[self.mesh.pmap[key]] = value
             self.u_star[self.mesh.pmap[key]] = value
         for key, value in self.mesh.bc_points_v["dirichlet"].items():
-            # self.v[key] = value
-            # self.v_star[key] = value
             self.v[self.mesh.pmap[key]] = value
             self.v_star[self.mesh.pmap[key]] = value
         for key, value in self.mesh.bc_points_p["dirichlet"].items():
-            # self.p[key] = value
             self.p[self.mesh.pmap[key]] = value
 
         # host to device data transfer
@@ -672,15 +657,10 @@ class FENS2D:
 
         # Set the known
         for key, value in self.mesh.bc_points_u["dirichlet"].items():
-            # self.u[key] = value
-            # self.u_star[key] = value
             self.u[self.mesh.pmap[key]] = value
             self.u_star[self.mesh.pmap[key]] = value
         for key, value in self.mesh.bc_points_v["dirichlet"].items():
-            # self.v[key] = value
-            # self.v_star[key] = value
             self.v[self.mesh.pmap[key]] = value
             self.v_star[self.mesh.pmap[key]] = value
         for key, value in self.mesh.bc_points_p["dirichlet"].items():
-            # self.p[key] = value
             self.p[self.mesh.pmap[key]] = value
