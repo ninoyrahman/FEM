@@ -719,18 +719,18 @@ class Mesh_from_FreeCAD_ns:
     -------
     
     """
-    def __init__(self, _faces, _boundary_simplices=None):
+    def __init__(self, _faces, ratio=0.05):
         """
         Parameters
         ----------
         _faces : numpy.ndarray
             Simplices coordinates
-        _boundary_simplices : numpy.ndarray, Optional
-            Additional boundary simplices coordinates
+        ratio : float, Optional
+            ratio for concave hull, smaller value for higher refinement
         """
 
         # Create Triangulation
-        self.tri = Tri(_faces, _boundary_simplices)
+        self.tri = Tri(_faces, ratio)
         self.points = self.tri.points
 
         # Identify the boundary points

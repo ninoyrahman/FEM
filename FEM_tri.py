@@ -1,6 +1,7 @@
 # FEM_tri
 import numpy as np
 import scipy as sp
+import shapely as shp
 
 # Triangle class
 class GenericTriElement:
@@ -109,7 +110,7 @@ class GaussianQuadratureTri:
     -------
     calculate(self, _f, p1, p2, p3)
         Calculate the numerical integration for each node
-    """     
+    """
     
     def __init__(self):
         """
@@ -144,7 +145,33 @@ class GaussianQuadratureTri:
         ])
 
 class Tri:
-    def __init__(self, _faces, _boundary_simplices=None):
+    """
+    class for generating triangulation from FreeCAD mesh 
+
+    ...
+
+    Attributes
+    ----------
+    faces : numpy.ndarray
+            coordinates of vertices of faces/triangles
+    points : numpy.ndarray
+            coordinates of points
+    nsimplex : int
+        number of faces/triangles
+    npoints : int
+        number of simplices
+    simplices : numpy.ndarray
+        indices of vertices of faces/triangles
+    boundary_points : numpy.ndarray
+        indices of boundary points
+    convex_hull : numpy.ndarray
+        boundary-point-indices of lines on the mesh boundary
+        
+    Methods
+    -------
+
+    """
+    def __init__(self, _faces, ratio=0.05):
         self.faces = _faces
         self.points = np.unique(self.faces, axis=0)
         self.nsimplex = self.faces.shape[0]//3
@@ -163,53 +190,25 @@ class Tri:
             end += 3
         self.simplices = np.array(self.simplices, dtype=np.int32)
 
-        self.convex_hull = sp.spatial.ConvexHull(self.points).simplices
-
-        additional_convex_hull = []
-        if _boundary_simplices is not None:
-            start = 0
-            end = 2
-            for fidx in range(_boundary_simplices.shape[0]//2):
-                p1, p2 = _boundary_simplices[start:end, :]
-                pidx1 = self.points.tolist().index(p1.tolist())
-                pidx2 = self.points.tolist().index(p2.tolist())
-                additional_convex_hull.append([pidx1, pidx2])
-                start += 2
-                end += 2
-        additional_convex_hull = np.array(additional_convex_hull, dtype=np.int32)
-
-        self.boundary_points = []
-        for pidx1, pidx2 in self.convex_hull:
-            p1 = self.points[pidx1]
-            p2 = self.points[pidx2]
-            d12 = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
-            for pidx3, p3 in enumerate(self.points):
-                d13 = np.sqrt((p3[0] - p1[0])**2 + (p3[1] - p1[1])**2)
-                d23 = np.sqrt((p3[0] - p2[0])**2 + (p3[1] - p2[1])**2)
-                if np.abs(d12 - d13 - d23) < 1e-5:
-                    self.boundary_points.append(pidx3)
+        # cancave hull determines mesh boundary better than convex hull
+        multi_point = shp.MultiPoint(self.points)
+        poly = shp.concave_hull(multi_point, ratio)
+        xx, yy = poly.exterior.coords.xy
+        boundary_points_coord = np.array(list(zip(xx, yy)))
         
-        for pidx1, pidx2 in additional_convex_hull:
-            p1 = self.points[pidx1]
-            p2 = self.points[pidx2]
-            d12 = np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
-            for pidx3, p3 in enumerate(self.points):
-                d13 = np.sqrt((p3[0] - p1[0])**2 + (p3[1] - p1[1])**2)
-                d23 = np.sqrt((p3[0] - p2[0])**2 + (p3[1] - p2[1])**2)
-                if np.abs(d12 - d13 - d23) < 1e-5:
-                    self.boundary_points.append(pidx3)
-
-        self.boundary_points = np.unique(self.boundary_points)
-        # print(self.boundary_points)
+        boundary_points_idx = []
+        for p in boundary_points_coord:
+            pidx = self.points.tolist().index(p.tolist())
+            boundary_points_idx.append(pidx)
+        self.boundary_points = np.unique(boundary_points_idx)
 
         X = self.points[self.boundary_points]
         dist_sq = np.sum((X[:,np.newaxis,:] - X[np.newaxis,:,:]) ** 2, axis=-1)
         nearest = np.argsort(dist_sq, axis=1)
-        # print(nearest[:, :3])
 
         self.convex_hull = []
         for pidx, nidx, nnidx in self.boundary_points[nearest[:, :3]]:
-            # print(pidx, self.points[pidx], nidx, self.points[nidx], nnidx, nidx, self.points[nnidx])
+            
             if not [nidx, pidx] in self.convex_hull:
                 self.convex_hull.append([pidx, nidx])
             if not [nnidx, pidx] in self.convex_hull:
