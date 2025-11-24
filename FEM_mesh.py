@@ -2,6 +2,7 @@
 import numpy as np
 import scipy as sp
 import shapely as shp
+from FEM_tri import Tri
 
 class Mesh:
     """
@@ -608,7 +609,7 @@ class Mesh_cavity_outline_ns:
         n_y : int
             number of points along y-axes
         outline : numpy.ndarray
-            outer boundary outline points
+            outline points for solid-object/cavity
         """          
         # Create a list with points coordinate (x,y)
         points = []
@@ -692,3 +693,59 @@ class Mesh_cavity_outline_ns:
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
+
+class Mesh_from_FreeCAD_ns:
+    """
+    class for Mesh generator with outer boundary outline points
+
+    ...
+
+    Attributes
+    ----------
+        points : float
+            grid points
+        tri : float
+            Delaunay triangles
+        boundary_points : float
+            boundary points index
+        bc_points : float
+            dict for dirichlet boundary points and neumann boundary edges for pressure
+        bc_points_u : float
+            dict for dirichlet boundary points and neumann boundary edges for velocity
+        bc_points_v : float
+            dict for dirichlet boundary points and neumann boundary edges for velocity
+    
+    Methods
+    -------
+    
+    """
+    def __init__(self, _faces, _boundary_simplices=None):
+        """
+        Parameters
+        ----------
+        _faces : numpy.ndarray
+            Simplices coordinates
+        _boundary_simplices : numpy.ndarray, Optional
+            Additional boundary simplices coordinates
+        """
+
+        # Create Triangulation
+        self.tri = Tri(_faces, _boundary_simplices)
+        self.points = self.tri.points
+
+        # Identify the boundary points
+        self.boundary_points = np.unique(self.tri.boundary_points)
+
+        # Initialize the boundary conditions dictionary
+        self.bc_points_p = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_u = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_v = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }

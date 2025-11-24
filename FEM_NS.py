@@ -297,7 +297,7 @@ class FENS2D:
         vel_max = max(np.abs(self.u).max(), np.abs(self.v).max()) + np.sqrt(1.4 * self.p.max())
         dt_conv = np.sqrt(dmin2) * CFL / vel_max
         dt_diff = dmin2
-        self.dt = min(dt_diff, dt_conv)
+        self.dt = dt_conv # min(dt_diff, dt_conv)
 
     # @staticmethod
     def calc_local_update(self, p1, p2, p3):
