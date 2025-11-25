@@ -719,7 +719,7 @@ class Mesh_from_FreeCAD_ns:
     -------
     
     """
-    def __init__(self, _faces, ratio=0.05):
+    def __init__(self, _faces, ratio=0.05, fcavity=None):
         """
         Parameters
         ----------
@@ -730,7 +730,7 @@ class Mesh_from_FreeCAD_ns:
         """
 
         # Create Triangulation
-        self.tri = Tri(_faces, ratio)
+        self.tri = Tri(_faces, ratio, fcavity)
         self.points = self.tri.points
 
         # Identify the boundary points

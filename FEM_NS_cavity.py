@@ -234,6 +234,7 @@ class FENS2D:
             self.p = np.array(_p, copy=True)
 
         self.dt = _dt
+        self.nu = 1
 
         self.points_to_solve   = np.array([], dtype=np.int32)
         self.points_to_solve_u = np.array([], dtype=np.int32)
@@ -519,11 +520,11 @@ class FENS2D:
         self.set_boundary_conditions_dirichlet()
 
         # Calculate q entries
-        self.qu = self.Minv @ self.su
-        self.qv = self.Minv @ self.sv
+        self.qu = self.Minv @ self.su * self.nu
+        self.qv = self.Minv @ self.sv * self.nu
         self.q  = self.s - self.K @ self.p_dirichlet
 
-        self.A  = self.Minv @ self.K
+        self.A  = self.Minv @ self.K * self.nu
         self.MG = self.Minv @ self.G
         self.MH = self.Minv @ self.H
 
