@@ -154,9 +154,9 @@ class FESM2D:
             self.b_d = cp.zeros((2*self.n_points, 1))
 
             self.u_d = cp.zeros_like(self.b_d)
-            self.u_dirichlet_d = np.zeros_like(self.b_d)
+            self.u_dirichlet_d = cp.zeros_like(self.b_d)
 
-            self.points_to_solve_d = np.array([], dtype=np.int32)
+            self.points_to_solve_d = cp.array([], dtype=cp.int32)
 
         print('Solving using GPU:', self.gpu)
         print('Solving using sparse matrix:', self.sparse)
@@ -422,12 +422,12 @@ class FESM2D:
 
             if self.sparse:
                 K_d_sparse = cps.sparse.csr_matrix(
-                    self.A[self.points_to_solve_d, :][:, self.points_to_solve_d])
+                    self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d])
                 self.u_d[self.points_to_solve_d, 0], exitCode = cps.sparse.linalg.gmres(
                     K_d_sparse, self.b_d[self.points_to_solve_d], x0=self.u_d[self.points_to_solve_d, 0])
             else:
                 self.u_d[self.points_to_solve_d] = cp.linalg.solve(
-                    self.A[self.points_to_solve_d, :][:, self.points_to_solve_d], self.b_d[self.points_to_solve_d])
+                    self.A_d[self.points_to_solve_d, :][:, self.points_to_solve_d], self.b_d[self.points_to_solve_d])
 
             # device to host data transfer
             cp.cuda.runtime.memcpy(self.u.ctypes.data, self.u_d.data.ptr,
