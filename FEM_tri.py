@@ -123,17 +123,35 @@ class GaussianQuadratureTri:
         self.tri_element = GenericTriElement()
 
     # Calculate the numerical integration for each node
-    def calculate(self, _f, p1, p2, p3):
+    def calculate(self, _f, p1, p2, p3, dof=1):
         """
         Parameters
         ----------
         _f : function
             R.H.S
-        p1, p2, p3: numpy.ndarray
+        p1, p2, p3 : numpy.ndarray
             coordinates of a triangle
+        dof : int
+            Degree of freedom
         """            
         # Get the global (x,y) coordinates at the weighted points
         xys = [self.tri_element.get_xy(wp[0], wp[1], p1, p2, p3) for wp in self.wps]
+
+        if dof == 2:
+            return np.array([
+                sum([w * _f(xy[0], xy[1])[0] * self.tri_element.N1(
+                    wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+                sum([w * _f(xy[0], xy[1])[1] * self.tri_element.N1(
+                    wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+                sum([w * _f(xy[0], xy[1])[0] * self.tri_element.N2(
+                    wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+                sum([w * _f(xy[0], xy[1])[1] * self.tri_element.N2(
+                    wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+                sum([w * _f(xy[0], xy[1])[0] * self.tri_element.N3(
+                    wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+                sum([w * _f(xy[0], xy[1])[1] * self.tri_element.N3(
+                    wp[0], wp[1]) for w, wp, xy in zip(self.ws, self.wps, xys)])
+            ])
 
         return np.array([
             sum([w * _f(xy[0], xy[1]) * self.tri_element.N1(

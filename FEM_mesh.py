@@ -396,7 +396,7 @@ class Mesh_cavity_outline:
 
 class Mesh_ns:
     """
-    class for Mesh generator for square or circular plate
+    class for Mesh generator for square or circular plate for NS equations
 
     ...
 
@@ -408,7 +408,7 @@ class Mesh_ns:
             Delaunay triangles
         boundary_points : float
             boundary points index
-        bc_points : float
+        bc_points_p : float
             dict for dirichlet boundary points and neumann boundary edges for pressure
         bc_points_u : float
             dict for dirichlet boundary points and neumann boundary edges for velocity
@@ -476,7 +476,7 @@ class Mesh_ns:
 
 class Mesh_from_outline_ns:
     """
-    class for Mesh generator with outer boundary outline points
+    class for Mesh generator with outer boundary outline points for NS equations
 
     ...
 
@@ -488,7 +488,7 @@ class Mesh_from_outline_ns:
             Delaunay triangles
         boundary_points : float
             boundary points index
-        bc_points : float
+        bc_points_p : float
             dict for dirichlet boundary points and neumann boundary edges for pressure
         bc_points_u : float
             dict for dirichlet boundary points and neumann boundary edges for velocity
@@ -565,7 +565,7 @@ class Mesh_from_outline_ns:
 # Mesh class
 class Mesh_cavity_outline_ns:
     """
-    class for Mesh generator with cavity outline points
+    class for Mesh generator with cavity outline points for NS equations
 
     ...
 
@@ -577,8 +577,12 @@ class Mesh_cavity_outline_ns:
             Delaunay triangles
         boundary_points : float
             boundary points index
-        bc_points : float
-            dict for dirichlet  boundary points and neumann boundary edges
+        bc_points_p : float
+            dict for dirichlet  boundary points and neumann boundary edges for pressure
+        bc_points_u : float
+            dict for dirichlet  boundary points and neumann boundary edges for velocity
+        bc_points_v : float
+            dict for dirichlet  boundary points and neumann boundary edges for velocity
         pflg : bool
             points-outside-cavity flag
         sflg : bool
@@ -696,7 +700,7 @@ class Mesh_cavity_outline_ns:
 
 class Mesh_from_FreeCAD_ns:
     """
-    class for Mesh generator with outer boundary outline points
+    class for Mesh generator with outer boundary outline points for NS equations
 
     ...
 
@@ -708,7 +712,7 @@ class Mesh_from_FreeCAD_ns:
             Delaunay triangles
         boundary_points : float
             boundary points index
-        bc_points : float
+        bc_points_p : float
             dict for dirichlet boundary points and neumann boundary edges for pressure
         bc_points_u : float
             dict for dirichlet boundary points and neumann boundary edges for velocity
@@ -753,7 +757,7 @@ class Mesh_from_FreeCAD_ns:
 # Mesh class
 class Mesh_from_FreeCAD_with_cavity_outline_ns:
     """
-    class for Mesh generator with cavity outline points
+    class for Mesh generator with cavity outline points for NS equations
 
     ...
 
@@ -765,8 +769,12 @@ class Mesh_from_FreeCAD_with_cavity_outline_ns:
             Delaunay triangles
         boundary_points : float
             boundary points index
-        bc_points : float
-            dict for dirichlet  boundary points and neumann boundary edges
+        bc_points_p : float
+            dict for dirichlet  boundary points and neumann boundary edges for pressure
+        bc_points_u : float
+            dict for dirichlet  boundary points and neumann boundary edges for velocity
+        bc_points_v : float
+            dict for dirichlet  boundary points and neumann boundary edges for velocity
         pflg : bool
             points-outside-cavity flag
         sflg : bool
@@ -864,3 +872,53 @@ class Mesh_from_FreeCAD_with_cavity_outline_ns:
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
+
+class Mesh_from_FreeCAD:
+    """
+    class for FreeCAD Mesh for SM equations
+
+    ...
+
+    Attributes
+    ----------
+        points : float
+            grid points
+        tri : float
+            Delaunay triangles
+        boundary_points : float
+            boundary points index
+        bc_points_u : float
+            dict for dirichlet boundary points and neumann boundary edges for displacement
+        bc_points_v : float
+            dict for dirichlet boundary points and neumann boundary edges for displacement
+    
+    Methods
+    -------
+    
+    """
+    def __init__(self, _faces, ratio=0.05, fcavity=None):
+        """
+        Parameters
+        ----------
+        _faces : numpy.ndarray
+            Simplices coordinates
+        ratio : float, Optional
+            ratio for concave hull, smaller value for higher refinement
+        """
+
+        # Create Triangulation
+        self.tri = Tri(_faces, ratio, fcavity)
+        self.points = self.tri.points
+
+        # Identify the boundary points
+        self.boundary_points = np.unique(self.tri.boundary_points)
+
+        # Initialize the boundary conditions dictionary
+        self.bc_points_u = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+        self.bc_points_v = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
