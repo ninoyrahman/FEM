@@ -266,13 +266,13 @@ class FENS2D:
             self.u_star_d = cp.zeros_like(self.b_d)
             self.v_star_d = cp.zeros_like(self.b_d)
             
-            self.u_dirichlet_d = np.zeros_like(self.b_d)
-            self.v_dirichlet_d = np.zeros_like(self.b_d)
-            self.p_dirichlet_d = np.zeros_like(self.b_d)
+            self.u_dirichlet_d = cp.zeros_like(self.b_d)
+            self.v_dirichlet_d = cp.zeros_like(self.b_d)
+            self.p_dirichlet_d = cp.zeros_like(self.b_d)
             
-            self.points_to_solve_d   = np.array([], dtype=np.int32)
-            self.points_to_solve_u_d = np.array([], dtype=np.int32)
-            self.points_to_solve_v_d = np.array([], dtype=np.int32)
+            self.points_to_solve_d   = cp.array([], dtype=cp.int32)
+            self.points_to_solve_u_d = cp.array([], dtype=cp.int32)
+            self.points_to_solve_v_d = cp.array([], dtype=cp.int32)
 
         print('Solving using GPU:', self.gpu)
         print('Solving using sparse matrix:', self.sparse)
