@@ -16,6 +16,12 @@ class FESM2D:
 
     Attributes
     ----------
+        E : float
+            Young's modulus in Pa
+        nu : float
+            Poisson's ratio
+        rho : float
+            density in kg/m3
         gte : GenericTriElement
             Class for 2D basis for a triangular element
         gauss_quad : GaussianQuadratureTri
@@ -94,7 +100,7 @@ class FESM2D:
         Solve Navier Stokes equations
     """
 
-    def __init__(self, _mesh, _f, _nu=0.3, _plain_stress=True, _u=None, _gpu=False, _sparse=False, _dt=0.001):
+    def __init__(self, _mesh, _f, _nu=0.3, _E=200e9, _rho=8e3, _plain_stress=True, _u=None, _gpu=False, _sparse=False, _dt=0.001):
         """
         Parameters
         ----------
@@ -137,6 +143,8 @@ class FESM2D:
 
         self.dt = _dt
         self.nu = _nu
+        self.E = _E
+        self.rho = _rho
         self.plain_stress = _plain_stress
 
         self.points_to_solve = np.array([], dtype=np.int32)
@@ -161,7 +169,9 @@ class FESM2D:
 
         print('Solving using GPU:', self.gpu)
         print('Solving using sparse matrix:', self.sparse)
-        print('Solving for nu:', self.nu)
+        print('Solving for Poisson raio:', self.nu)
+        print('Solving for Young modulus:', self.E)
+        print('Solving for density:', self.rho)
         if self.plain_stress:
             print('Solving for plain stress case')
         else:
@@ -312,7 +322,7 @@ class FESM2D:
         # b matrix
         b_local = j_det * self.gauss_quad.calculate(self.f, p1, p2, p3, dof=2)
 
-        return K_local, M_local, b_local
+        return K_local * self.E, M_local * self.rho, b_local
 
     def set_K_M(self):
         """
