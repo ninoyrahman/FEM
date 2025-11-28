@@ -94,7 +94,7 @@ class FESM2D:
         Solve Navier Stokes equations
     """
 
-    def __init__(self, _mesh, _f, _u=None, _gpu=False, _sparse=False, _dt=0.001):
+    def __init__(self, _mesh, _f, _nu=0.3, _plain_stress=True, _u=None, _gpu=False, _sparse=False, _dt=0.001):
         """
         Parameters
         ----------
@@ -136,7 +136,8 @@ class FESM2D:
             self.u = np.array(_u, copy=True)
 
         self.dt = _dt
-        self.nu = 0.5
+        self.nu = _nu
+        self.plain_stress = _plain_stress
 
         self.points_to_solve = np.array([], dtype=np.int32)
 
@@ -160,6 +161,11 @@ class FESM2D:
 
         print('Solving using GPU:', self.gpu)
         print('Solving using sparse matrix:', self.sparse)
+        print('Solving for nu:', self.nu)
+        if self.plain_stress:
+            print('Solving for plain stress case')
+        else:
+            print('Solving for plain strain case')
 
     def time_step_size(self):
         """
@@ -202,53 +208,102 @@ class FESM2D:
         b_local = np.zeros((6, 1))
 
         # local stiffness matrix
-        K_local[0, 0] = (self.nu*p2[0]**2 - 2*self.nu*p2[0]*p3[0] + self.nu*p3[0]**2 - p2[0]**2 + 2 *
-                         p2[0]*p3[0] - p3[0]**2 - 2*p2[1]**2 + 4*p2[1]*p3[1] - 2*p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[0, 1] = K_local[1, 0] = (
-            p2[0]*p2[1] - p2[0]*p3[1] - p3[0]*p2[1] + p3[0]*p3[1])/(4*(self.nu - 1)) / j_det
-        K_local[0, 2] = K_local[2, 0] = (-self.nu*p1[0]*p2[0] + self.nu*p1[0]*p3[0] + self.nu*p2[0]*p3[0] - self.nu*p3[0]**2 + p1[0]*p2[0] -
-                                         p1[0]*p3[0] - p2[0]*p3[0] + p3[0]**2 + 2*p1[1]*p2[1] - 2*p1[1]*p3[1] - 2*p2[1]*p3[1] + 2*p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[0, 3] = K_local[3, 0] = (-2*self.nu*p1[0]*p2[1] + 2*self.nu*p1[0]*p3[1] + self.nu*p2[0]*p1[1] - self.nu*p2[0]*p3[1] - self.nu*p3[0]
-                                         * p1[1] + 2*self.nu*p3[0]*p2[1] - self.nu*p3[0]*p3[1] - p2[0]*p1[1] + p2[0]*p3[1] + p3[0]*p1[1] - p3[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
-        K_local[0, 4] = K_local[4, 0] = (self.nu*p1[0]*p2[0] - self.nu*p1[0]*p3[0] - self.nu*p2[0]**2 + self.nu*p2[0]*p3[0] - p1[0]*p2[0] +
-                                         p1[0]*p3[0] + p2[0]**2 - p2[0]*p3[0] - 2*p1[1]*p2[1] + 2*p1[1]*p3[1] + 2*p2[1]**2 - 2*p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
-        K_local[0, 5] = K_local[5, 0] = (2*self.nu*p1[0]*p2[1] - 2*self.nu*p1[0]*p3[1] - self.nu*p2[0]*p1[1] - self.nu*p2[0]*p2[1] + 2*self.nu*p2[0]
-                                         * p3[1] + self.nu*p3[0]*p1[1] - self.nu*p3[0]*p2[1] + p2[0]*p1[1] - p2[0]*p2[1] - p3[0]*p1[1] + p3[0]*p2[1])/(4*(self.nu**2 - 1)) / j_det
+        if self.plain_stress:
+            K_local[0, 0] = (self.nu*p2[0]**2 - 2*self.nu*p2[0]*p3[0] + self.nu*p3[0]**2 - p2[0]**2 + 2 *
+                             p2[0]*p3[0] - p3[0]**2 - 2*p2[1]**2 + 4*p2[1]*p3[1] - 2*p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[0, 1] = K_local[1, 0] = (
+                p2[0]*p2[1] - p2[0]*p3[1] - p3[0]*p2[1] + p3[0]*p3[1])/(4*(self.nu - 1)) / j_det
+            K_local[0, 2] = K_local[2, 0] = (-self.nu*p1[0]*p2[0] + self.nu*p1[0]*p3[0] + self.nu*p2[0]*p3[0] - self.nu*p3[0]**2 + p1[0]*p2[0] -
+                                             p1[0]*p3[0] - p2[0]*p3[0] + p3[0]**2 + 2*p1[1]*p2[1] - 2*p1[1]*p3[1] - 2*p2[1]*p3[1] + 2*p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[0, 3] = K_local[3, 0] = (-2*self.nu*p1[0]*p2[1] + 2*self.nu*p1[0]*p3[1] + self.nu*p2[0]*p1[1] - self.nu*p2[0]*p3[1] - self.nu*p3[0]
+                                             * p1[1] + 2*self.nu*p3[0]*p2[1] - self.nu*p3[0]*p3[1] - p2[0]*p1[1] + p2[0]*p3[1] + p3[0]*p1[1] - p3[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[0, 4] = K_local[4, 0] = (self.nu*p1[0]*p2[0] - self.nu*p1[0]*p3[0] - self.nu*p2[0]**2 + self.nu*p2[0]*p3[0] - p1[0]*p2[0] +
+                                             p1[0]*p3[0] + p2[0]**2 - p2[0]*p3[0] - 2*p1[1]*p2[1] + 2*p1[1]*p3[1] + 2*p2[1]**2 - 2*p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[0, 5] = K_local[5, 0] = (2*self.nu*p1[0]*p2[1] - 2*self.nu*p1[0]*p3[1] - self.nu*p2[0]*p1[1] - self.nu*p2[0]*p2[1] + 2*self.nu*p2[0]
+                                             * p3[1] + self.nu*p3[0]*p1[1] - self.nu*p3[0]*p2[1] + p2[0]*p1[1] - p2[0]*p2[1] - p3[0]*p1[1] + p3[0]*p2[1])/(4*(self.nu**2 - 1)) / j_det
 
-        K_local[1, 1] = (self.nu*p2[1]**2 - 2*self.nu*p2[1]*p3[1] + self.nu*p3[1]**2 - 2*p2[0]**2 +
-                         4*p2[0]*p3[0] - 2*p3[0]**2 - p2[1]**2 + 2*p2[1]*p3[1] - p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[1, 2] = K_local[2, 1] = (self.nu*p1[0]*p2[1] - self.nu*p1[0]*p3[1] - 2*self.nu*p2[0]*p1[1] + 2*self.nu*p2[0]*p3[1] + 2*self.nu*p3[0]
-                                         * p1[1] - self.nu*p3[0]*p2[1] - self.nu*p3[0]*p3[1] - p1[0]*p2[1] + p1[0]*p3[1] + p3[0]*p2[1] - p3[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
-        K_local[1, 3] = K_local[3, 1] = (-self.nu*p1[1]*p2[1] + self.nu*p1[1]*p3[1] + self.nu*p2[1]*p3[1] - self.nu*p3[1]**2 + 2*p1[0]*p2[0] - 2*p1[0]*p3[0] - 2*p2[0]*p3[0]
-                                         + 2*p3[0]**2 + p1[1]*p2[1] - p1[1]*p3[1] - p2[1]*p3[1] + p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[1, 4] = K_local[4, 1] = (-self.nu*p1[0]*p2[1] + self.nu*p1[0]*p3[1] + 2*self.nu*p2[0]*p1[1] - self.nu*p2[0]*p2[1] - self.nu*p2[0] *
-                                         p3[1] - 2*self.nu*p3[0]*p1[1] + 2*self.nu*p3[0]*p2[1] + p1[0]*p2[1] - p1[0]*p3[1] - p2[0]*p2[1] + p2[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
-        K_local[1, 5] = K_local[5, 1] = (self.nu*p1[1]*p2[1] - self.nu*p1[1]*p3[1] - self.nu*p2[1]**2 + self.nu*p2[1]*p3[1] - 2*p1[0]*p2[0] +
-                                         2*p1[0]*p3[0] + 2*p2[0]**2 - 2*p2[0]*p3[0] - p1[1]*p2[1] + p1[1]*p3[1] + p2[1]**2 - p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[1, 1] = (self.nu*p2[1]**2 - 2*self.nu*p2[1]*p3[1] + self.nu*p3[1]**2 - 2*p2[0]**2 +
+                             4*p2[0]*p3[0] - 2*p3[0]**2 - p2[1]**2 + 2*p2[1]*p3[1] - p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[1, 2] = K_local[2, 1] = (self.nu*p1[0]*p2[1] - self.nu*p1[0]*p3[1] - 2*self.nu*p2[0]*p1[1] + 2*self.nu*p2[0]*p3[1] + 2*self.nu*p3[0]
+                                             * p1[1] - self.nu*p3[0]*p2[1] - self.nu*p3[0]*p3[1] - p1[0]*p2[1] + p1[0]*p3[1] + p3[0]*p2[1] - p3[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[1, 3] = K_local[3, 1] = (-self.nu*p1[1]*p2[1] + self.nu*p1[1]*p3[1] + self.nu*p2[1]*p3[1] - self.nu*p3[1]**2 + 2*p1[0]*p2[0] - 2*p1[0]*p3[0] - 2*p2[0]*p3[0]
+                                             + 2*p3[0]**2 + p1[1]*p2[1] - p1[1]*p3[1] - p2[1]*p3[1] + p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[1, 4] = K_local[4, 1] = (-self.nu*p1[0]*p2[1] + self.nu*p1[0]*p3[1] + 2*self.nu*p2[0]*p1[1] - self.nu*p2[0]*p2[1] - self.nu*p2[0] *
+                                             p3[1] - 2*self.nu*p3[0]*p1[1] + 2*self.nu*p3[0]*p2[1] + p1[0]*p2[1] - p1[0]*p3[1] - p2[0]*p2[1] + p2[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[1, 5] = K_local[5, 1] = (self.nu*p1[1]*p2[1] - self.nu*p1[1]*p3[1] - self.nu*p2[1]**2 + self.nu*p2[1]*p3[1] - 2*p1[0]*p2[0] +
+                                             2*p1[0]*p3[0] + 2*p2[0]**2 - 2*p2[0]*p3[0] - p1[1]*p2[1] + p1[1]*p3[1] + p2[1]**2 - p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
 
-        K_local[2, 2] = (self.nu*p1[0]**2 - 2*self.nu*p1[0]*p3[0] + self.nu*p3[0]**2 - p1[0]**2 + 2 *
-                         p1[0]*p3[0] - p3[0]**2 - 2*p1[1]**2 + 4*p1[1]*p3[1] - 2*p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[2, 3] = K_local[3, 2] = (
-            p1[0]*p1[1] - p1[0]*p3[1] - p3[0]*p1[1] + p3[0]*p3[1])/(4*(self.nu - 1)) / j_det
-        K_local[2, 4] = K_local[4, 2] = (-self.nu*p1[0]**2 + self.nu*p1[0]*p2[0] + self.nu*p1[0]*p3[0] - self.nu*p2[0]*p3[0] + p1[0]**2 -
-                                         p1[0]*p2[0] - p1[0]*p3[0] + p2[0]*p3[0] + 2*p1[1]**2 - 2*p1[1]*p2[1] - 2*p1[1]*p3[1] + 2*p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
-        K_local[2, 5] = K_local[5, 2] = (-self.nu*p1[0]*p1[1] - self.nu*p1[0]*p2[1] + 2*self.nu*p1[0]*p3[1] + 2*self.nu*p2[0]*p1[1] - 2*self.nu*p2[0]
-                                         * p3[1] - self.nu*p3[0]*p1[1] + self.nu*p3[0]*p2[1] - p1[0]*p1[1] + p1[0]*p2[1] + p3[0]*p1[1] - p3[0]*p2[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[2, 2] = (self.nu*p1[0]**2 - 2*self.nu*p1[0]*p3[0] + self.nu*p3[0]**2 - p1[0]**2 + 2 *
+                             p1[0]*p3[0] - p3[0]**2 - 2*p1[1]**2 + 4*p1[1]*p3[1] - 2*p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[2, 3] = K_local[3, 2] = (
+                p1[0]*p1[1] - p1[0]*p3[1] - p3[0]*p1[1] + p3[0]*p3[1])/(4*(self.nu - 1)) / j_det
+            K_local[2, 4] = K_local[4, 2] = (-self.nu*p1[0]**2 + self.nu*p1[0]*p2[0] + self.nu*p1[0]*p3[0] - self.nu*p2[0]*p3[0] + p1[0]**2 -
+                                             p1[0]*p2[0] - p1[0]*p3[0] + p2[0]*p3[0] + 2*p1[1]**2 - 2*p1[1]*p2[1] - 2*p1[1]*p3[1] + 2*p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[2, 5] = K_local[5, 2] = (-self.nu*p1[0]*p1[1] - self.nu*p1[0]*p2[1] + 2*self.nu*p1[0]*p3[1] + 2*self.nu*p2[0]*p1[1] - 2*self.nu*p2[0]
+                                             * p3[1] - self.nu*p3[0]*p1[1] + self.nu*p3[0]*p2[1] - p1[0]*p1[1] + p1[0]*p2[1] + p3[0]*p1[1] - p3[0]*p2[1])/(4*(self.nu**2 - 1)) / j_det
 
-        K_local[3, 3] = (self.nu*p1[1]**2 - 2*self.nu*p1[1]*p3[1] + self.nu*p3[1]**2 - 2*p1[0]**2 +
-                         4*p1[0]*p3[0] - 2*p3[0]**2 - p1[1]**2 + 2*p1[1]*p3[1] - p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[3, 4] = K_local[4, 3] = (-self.nu*p1[0]*p1[1] + 2*self.nu*p1[0]*p2[1] - self.nu*p1[0]*p3[1] - self.nu*p2[0]*p1[1] + self.nu*p2[0] *
-                                         p3[1] + 2*self.nu*p3[0]*p1[1] - 2*self.nu*p3[0]*p2[1] - p1[0]*p1[1] + p1[0]*p3[1] + p2[0]*p1[1] - p2[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
-        K_local[3, 5] = K_local[5, 3] = (-self.nu*p1[1]**2 + self.nu*p1[1]*p2[1] + self.nu*p1[1]*p3[1] - self.nu*p2[1]*p3[1] + 2*p1[0]**2 -
-                                         2*p1[0]*p2[0] - 2*p1[0]*p3[0] + 2*p2[0]*p3[0] + p1[1]**2 - p1[1]*p2[1] - p1[1]*p3[1] + p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[3, 3] = (self.nu*p1[1]**2 - 2*self.nu*p1[1]*p3[1] + self.nu*p3[1]**2 - 2*p1[0]**2 +
+                             4*p1[0]*p3[0] - 2*p3[0]**2 - p1[1]**2 + 2*p1[1]*p3[1] - p3[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[3, 4] = K_local[4, 3] = (-self.nu*p1[0]*p1[1] + 2*self.nu*p1[0]*p2[1] - self.nu*p1[0]*p3[1] - self.nu*p2[0]*p1[1] + self.nu*p2[0] *
+                                             p3[1] + 2*self.nu*p3[0]*p1[1] - 2*self.nu*p3[0]*p2[1] - p1[0]*p1[1] + p1[0]*p3[1] + p2[0]*p1[1] - p2[0]*p3[1])/(4*(self.nu**2 - 1)) / j_det
+            K_local[3, 5] = K_local[5, 3] = (-self.nu*p1[1]**2 + self.nu*p1[1]*p2[1] + self.nu*p1[1]*p3[1] - self.nu*p2[1]*p3[1] + 2*p1[0]**2 -
+                                             2*p1[0]*p2[0] - 2*p1[0]*p3[0] + 2*p2[0]*p3[0] + p1[1]**2 - p1[1]*p2[1] - p1[1]*p3[1] + p2[1]*p3[1])/(4*(self.nu**2 - 1)) / j_det
 
-        K_local[4, 4] = (self.nu*p1[0]**2 - 2*self.nu*p1[0]*p2[0] + self.nu*p2[0]**2 - p1[0]**2 + 2 *
-                         p1[0]*p2[0] - p2[0]**2 - 2*p1[1]**2 + 4*p1[1]*p2[1] - 2*p2[1]**2)/(4*(self.nu**2 - 1)) / j_det
-        K_local[4, 5] = K_local[5, 4] = (
-            p1[0]*p1[1] - p1[0]*p2[1] - p2[0]*p1[1] + p2[0]*p2[1])/(4*(self.nu - 1)) / j_det
+            K_local[4, 4] = (self.nu*p1[0]**2 - 2*self.nu*p1[0]*p2[0] + self.nu*p2[0]**2 - p1[0]**2 + 2 *
+                             p1[0]*p2[0] - p2[0]**2 - 2*p1[1]**2 + 4*p1[1]*p2[1] - 2*p2[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[4, 5] = K_local[5, 4] = (
+                p1[0]*p1[1] - p1[0]*p2[1] - p2[0]*p1[1] + p2[0]*p2[1])/(4*(self.nu - 1)) / j_det
 
-        K_local[5, 5] = (self.nu*p1[1]**2 - 2*self.nu*p1[1]*p2[1] + self.nu*p2[1]**2 - 2*p1[0]**2 +
-                         4*p1[0]*p2[0] - 2*p2[0]**2 - p1[1]**2 + 2*p1[1]*p2[1] - p2[1]**2)/(4*(self.nu**2 - 1)) / j_det
+            K_local[5, 5] = (self.nu*p1[1]**2 - 2*self.nu*p1[1]*p2[1] + self.nu*p2[1]**2 - 2*p1[0]**2 +
+                             4*p1[0]*p2[0] - 2*p2[0]**2 - p1[1]**2 + 2*p1[1]*p2[1] - p2[1]**2)/(4*(self.nu**2 - 1)) / j_det
+        else:
+            K_local[0, 0] = (2.0*self.nu*p2[0]**2 - 4.0*self.nu*p2[0]*p3[0] + 2.0*self.nu*p3[0]**2 + 2.0*self.nu*p2[1]**2 - 4.0*self.nu*p2[1]*p3[1] + 2.0 *
+                             self.nu*p3[1]**2 - p2[0]**2 + 2.0*p2[0]*p3[0] - p3[0]**2 - 2.0*p2[1]**2 + 4.0*p2[1]*p3[1] - 2.0*p3[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[0, 1] = K_local[1, 0] = (
+                p2[0]*p2[1] - p2[0]*p3[1] - p3[0]*p2[1] + p3[0]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[0, 2] = K_local[2, 0] = (-2.0*self.nu*p1[0]*p2[0] + 2.0*self.nu*p1[0]*p3[0] + 2.0*self.nu*p2[0]*p3[0] - 2.0*self.nu*p3[0]**2 - 2.0*self.nu*p1[1]*p2[1] + 2.0*self.nu*p1[1]*p3[1] + 2.0*self.nu *
+                                             p2[1]*p3[1] - 2.0*self.nu*p3[1]**2 + p1[0]*p2[0] - p1[0]*p3[0] - p2[0]*p3[0] + p3[0]**2 + 2.0*p1[1]*p2[1] - 2.0*p1[1]*p3[1] - 2.0*p2[1]*p3[1] + 2.0*p3[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[0, 3] = K_local[3, 0] = (-2.0*self.nu*p1[0]*p2[1] + 2.0*self.nu*p1[0]*p3[1] + 2.0*self.nu*p2[0]*p1[1] - 2.0*self.nu*p2[0]*p3[1] - 2.0 *
+                                             self.nu*p3[0]*p1[1] + 2.0*self.nu*p3[0]*p2[1] - p2[0]*p1[1] + p2[0]*p3[1] + p3[0]*p1[1] - p3[0]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[0, 4] = K_local[4, 0] = (2.0*self.nu*p1[0]*p2[0] - 2.0*self.nu*p1[0]*p3[0] - 2.0*self.nu*p2[0]**2 + 2.0*self.nu*p2[0]*p3[0] + 2.0*self.nu*p1[1]*p2[1] - 2.0*self.nu*p1[1]*p3[1] - 2.0*self.nu *
+                                             p2[1]**2 + 2.0*self.nu*p2[1]*p3[1] - p1[0]*p2[0] + p1[0]*p3[0] + p2[0]**2 - p2[0]*p3[0] - 2.0*p1[1]*p2[1] + 2.0*p1[1]*p3[1] + 2.0*p2[1]**2 - 2.0*p2[1]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[0, 5] = K_local[5, 0] = (2.0*self.nu*p1[0]*p2[1] - 2.0*self.nu*p1[0]*p3[1] - 2.0*self.nu*p2[0]*p1[1] + 2.0*self.nu*p2[0]*p3[1] + 2.0 *
+                                             self.nu*p3[0]*p1[1] - 2.0*self.nu*p3[0]*p2[1] + p2[0]*p1[1] - p2[0]*p2[1] - p3[0]*p1[1] + p3[0]*p2[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+
+            K_local[1, 1] = (2.0*self.nu*p2[0]**2 - 4.0*self.nu*p2[0]*p3[0] + 2.0*self.nu*p3[0]**2 + 2.0*self.nu*p2[1]**2 - 4.0*self.nu*p2[1]*p3[1] + 2.0 *
+                             self.nu*p3[1]**2 - 2.0*p2[0]**2 + 4.0*p2[0]*p3[0] - 2.0*p3[0]**2 - p2[1]**2 + 2.0*p2[1]*p3[1] - p3[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[1, 2] = K_local[2, 1] = (2.0*self.nu*p1[0]*p2[1] - 2.0*self.nu*p1[0]*p3[1] - 2.0*self.nu*p2[0]*p1[1] + 2.0*self.nu*p2[0]*p3[1] + 2.0 *
+                                             self.nu*p3[0]*p1[1] - 2.0*self.nu*p3[0]*p2[1] - p1[0]*p2[1] + p1[0]*p3[1] + p3[0]*p2[1] - p3[0]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[1, 3] = K_local[3, 1] = (-2.0*self.nu*p1[0]*p2[0] + 2.0*self.nu*p1[0]*p3[0] + 2.0*self.nu*p2[0]*p3[0] - 2.0*self.nu*p3[0]**2 - 2.0*self.nu*p1[1]*p2[1] + 2.0*self.nu*p1[1]*p3[1] + 2.0*self.nu *
+                                             p2[1]*p3[1] - 2.0*self.nu*p3[1]**2 + 2.0*p1[0]*p2[0] - 2.0*p1[0]*p3[0] - 2.0*p2[0]*p3[0] + 2.0*p3[0]**2 + p1[1]*p2[1] - p1[1]*p3[1] - p2[1]*p3[1] + p3[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[1, 4] = K_local[4, 1] = (-2.0*self.nu*p1[0]*p2[1] + 2.0*self.nu*p1[0]*p3[1] + 2.0*self.nu*p2[0]*p1[1] - 2.0*self.nu*p2[0]*p3[1] - 2.0 *
+                                             self.nu*p3[0]*p1[1] + 2.0*self.nu*p3[0]*p2[1] + p1[0]*p2[1] - p1[0]*p3[1] - p2[0]*p2[1] + p2[0]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[1, 5] = K_local[5, 1] = (2.0*self.nu*p1[0]*p2[0] - 2.0*self.nu*p1[0]*p3[0] - 2.0*self.nu*p2[0]**2 + 2.0*self.nu*p2[0]*p3[0] + 2.0*self.nu*p1[1]*p2[1] - 2.0*self.nu*p1[1]*p3[1] - 2.0*self.nu *
+                                             p2[1]**2 + 2.0*self.nu*p2[1]*p3[1] - 2.0*p1[0]*p2[0] + 2.0*p1[0]*p3[0] + 2.0*p2[0]**2 - 2.0*p2[0]*p3[0] - p1[1]*p2[1] + p1[1]*p3[1] + p2[1]**2 - p2[1]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+
+            K_local[2, 2] = (2.0*self.nu*p1[0]**2 - 4.0*self.nu*p1[0]*p3[0] + 2.0*self.nu*p3[0]**2 + 2.0*self.nu*p1[1]**2 - 4.0*self.nu*p1[1]*p3[1] + 2.0 *
+                             self.nu*p3[1]**2 - p1[0]**2 + 2.0*p1[0]*p3[0] - p3[0]**2 - 2.0*p1[1]**2 + 4.0*p1[1]*p3[1] - 2.0*p3[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[2, 3] = K_local[3, 2] = (
+                p1[0]*p1[1] - p1[0]*p3[1] - p3[0]*p1[1] + p3[0]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[2, 4] = K_local[4, 2] = (-2.0*self.nu*p1[0]**2 + 2.0*self.nu*p1[0]*p2[0] + 2.0*self.nu*p1[0]*p3[0] - 2.0*self.nu*p2[0]*p3[0] - 2.0*self.nu*p1[1]**2 + 2.0*self.nu*p1[1]*p2[1] + 2.0*self.nu *
+                                             p1[1]*p3[1] - 2.0*self.nu*p2[1]*p3[1] + p1[0]**2 - p1[0]*p2[0] - p1[0]*p3[0] + p2[0]*p3[0] + 2.0*p1[1]**2 - 2.0*p1[1]*p2[1] - 2.0*p1[1]*p3[1] + 2.0*p2[1]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[2, 5] = K_local[5, 2] = (-2.0*self.nu*p1[0]*p2[1] + 2.0*self.nu*p1[0]*p3[1] + 2.0*self.nu*p2[0]*p1[1] - 2.0*self.nu*p2[0]*p3[1] - 2.0 *
+                                             self.nu*p3[0]*p1[1] + 2.0*self.nu*p3[0]*p2[1] - p1[0]*p1[1] + p1[0]*p2[1] + p3[0]*p1[1] - p3[0]*p2[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+
+            K_local[3, 3] = (2.0*self.nu*p1[0]**2 - 4.0*self.nu*p1[0]*p3[0] + 2.0*self.nu*p3[0]**2 + 2.0*self.nu*p1[1]**2 - 4.0*self.nu*p1[1]*p3[1] + 2.0 *
+                             self.nu*p3[1]**2 - 2.0*p1[0]**2 + 4.0*p1[0]*p3[0] - 2.0*p3[0]**2 - p1[1]**2 + 2.0*p1[1]*p3[1] - p3[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[3, 4] = K_local[4, 3] = (2.0*self.nu*p1[0]*p2[1] - 2.0*self.nu*p1[0]*p3[1] - 2.0*self.nu*p2[0]*p1[1] + 2.0*self.nu*p2[0]*p3[1] + 2.0 *
+                                             self.nu*p3[0]*p1[1] - 2.0*self.nu*p3[0]*p2[1] - p1[0]*p1[1] + p1[0]*p3[1] + p2[0]*p1[1] - p2[0]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[3, 5] = K_local[5, 3] = (-2.0*self.nu*p1[0]**2 + 2.0*self.nu*p1[0]*p2[0] + 2.0*self.nu*p1[0]*p3[0] - 2.0*self.nu*p2[0]*p3[0] - 2.0*self.nu*p1[1]**2 + 2.0*self.nu*p1[1]*p2[1] + 2.0*self.nu *
+                                             p1[1]*p3[1] - 2.0*self.nu*p2[1]*p3[1] + 2.0*p1[0]**2 - 2.0*p1[0]*p2[0] - 2.0*p1[0]*p3[0] + 2.0*p2[0]*p3[0] + p1[1]**2 - p1[1]*p2[1] - p1[1]*p3[1] + p2[1]*p3[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+
+            K_local[4, 4] = (2.0*self.nu*p1[0]**2 - 4.0*self.nu*p1[0]*p2[0] + 2.0*self.nu*p2[0]**2 + 2.0*self.nu*p1[1]**2 - 4.0*self.nu*p1[1]*p2[1] + 2.0 *
+                             self.nu*p2[1]**2 - p1[0]**2 + 2.0*p1[0]*p2[0] - p2[0]**2 - 2.0*p1[1]**2 + 4.0*p1[1]*p2[1] - 2.0*p2[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+            K_local[4, 5] = K_local[5, 4] = (
+                p1[0]*p1[1] - p1[0]*p2[1] - p2[0]*p1[1] + p2[0]*p2[1])/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
+
+            K_local[5, 5] = (2.0*self.nu*p1[0]**2 - 4.0*self.nu*p1[0]*p2[0] + 2.0*self.nu*p2[0]**2 + 2.0*self.nu*p1[1]**2 - 4.0*self.nu*p1[1]*p2[1] + 2.0 *
+                             self.nu*p2[1]**2 - 2.0*p1[0]**2 + 4.0*p1[0]*p2[0] - 2.0*p2[0]**2 - p1[1]**2 + 2.0*p1[1]*p2[1] - p2[1]**2)/(8.0*self.nu**2 + 4.0*self.nu - 4.0)
 
         # local mass matrix
         M_local = np.array([[2.0, 0, 1.0, 0, 1.0, 0], [0, 2.0, 0, 1.0, 0, 1.0], [1.0, 0, 2.0, 0, 1.0, 0], [
@@ -277,7 +332,8 @@ class FESM2D:
 
             # Assemble element's matrix solution into global matrix
             # columns = np.array([el_ps for _ in range(3)])
-            plist = np.array([2*el_ps[0], 2*el_ps[0]+1, 2*el_ps[1], 2*el_ps[1]+1, 2*el_ps[2], 2*el_ps[2]+1])
+            plist = np.array([2*el_ps[0], 2*el_ps[0]+1, 2 *
+                             el_ps[1], 2*el_ps[1]+1, 2*el_ps[2], 2*el_ps[2]+1])
             columns = np.array([plist for _ in range(6)])
             rows = columns.T
             self.K[rows, columns] += K_local
@@ -300,7 +356,8 @@ class FESM2D:
 
             # Assemble element's matrix solution into global matrix
             # self.s[el_ps, 0] += b_local
-            plist = np.array([2*el_ps[0], 2*el_ps[0]+1, 2*el_ps[1], 2*el_ps[1]+1, 2*el_ps[2], 2*el_ps[2]+1])
+            plist = np.array([2*el_ps[0], 2*el_ps[0]+1, 2 *
+                             el_ps[1], 2*el_ps[1]+1, 2*el_ps[2], 2*el_ps[2]+1])
             self.s[plist, 0] += b_local
 
     def set_boundary_conditions_dirichlet(self):
@@ -327,7 +384,7 @@ class FESM2D:
             distance = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             # Store the line integral in vector b
             for p_idx, du_value in zip(ch_points, du_values):
-                self.s[2*p_idx]   += 0.5 * distance * du_value  # du_boundary
+                self.s[2*p_idx] += 0.5 * distance * du_value  # du_boundary
 
         for ch_idx, du_values in self.mesh.bc_points_v["neumann_edge"].items():
             # convex_hull is a list with pair of point indices
@@ -336,7 +393,7 @@ class FESM2D:
             distance = np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             # Store the line integral in vector b
             for p_idx, du_value in zip(ch_points, du_values):
-                self.s[2*p_idx+1]   += 0.5 * distance * du_value  # du_boundary
+                self.s[2*p_idx+1] += 0.5 * distance * du_value  # du_boundary
 
     def initialze(self):
         """
@@ -352,7 +409,7 @@ class FESM2D:
                     self.points_to_solve, 2*p_idx)
 
         for p_idx in range(self.mesh.tri.npoints):
-            if p_idx not in self.mesh.bc_points_v["dirichlet"]:                
+            if p_idx not in self.mesh.bc_points_v["dirichlet"]:
                 self.points_to_solve = np.append(
                     self.points_to_solve, 2*p_idx+1)
 
@@ -373,14 +430,14 @@ class FESM2D:
 
         # Inverse mass matrix
         self.Minv = np.linalg.inv(self.M)
-        
+
         # Calculate A and q entries
         self.A = self.Minv @ self.K
         self.b = self.Minv @ self.s - self.A @ self.u_dirichlet
 
         # Set the known
         for key, value in self.mesh.bc_points_u["dirichlet"].items():
-            self.u[2*key]   = value
+            self.u[2*key] = value
         for key, value in self.mesh.bc_points_v["dirichlet"].items():
             self.u[2*key+1] = value
 
@@ -435,6 +492,6 @@ class FESM2D:
 
         # Set the known
         for key, value in self.mesh.bc_points_u["dirichlet"].items():
-            self.u[2*key]   = value
+            self.u[2*key] = value
         for key, value in self.mesh.bc_points_v["dirichlet"].items():
             self.u[2*key+1] = value
