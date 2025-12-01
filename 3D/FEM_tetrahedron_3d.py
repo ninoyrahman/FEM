@@ -233,7 +233,15 @@ class Tetrahedron:
     -------
 
     """
-    def __init__(self, _faces, alpha=34, fcavity=None):
+    def __init__(self, _faces, alpha=34):
+        """
+        Parameters
+        ----------
+        _faces : numpy.ndarray
+            Simplices coordinates
+        alpha : float, optional
+            alpha parameter for alphashape
+        """
         self.faces = _faces
         self.points = np.unique(self.faces, axis=0)
         self.nsimplex = self.faces.shape[0]//4
@@ -261,12 +269,6 @@ class Tetrahedron:
             pidx = self.points.tolist().index(p.tolist())
             boundary_points_idx.append(pidx)
         self.boundary_points = np.unique(boundary_points_idx)
-
-        if fcavity is not None:
-            for pidx, p in enumerate(self.points):
-                if fcavity(p):
-                    self.boundary_points = np.append(self.boundary_points, pidx)
-            self.boundary_points = np.unique(self.boundary_points)
 
         X = self.points[self.boundary_points]
         dist_sq = np.sum((X[:,np.newaxis,:] - X[np.newaxis,:,:]) **2, axis=-1)

@@ -108,6 +108,14 @@ class FESM2D:
             Mesh for computational domain
         _f : function
             R.H.S function
+        _nu : int, optional
+            Poisson's ratio
+        _E : float, optional
+            Young's modulus
+        _rho : float, optional
+            density
+        _plain_stress : bool, optional
+            True for plain stress condition, False for plain strain condition
         _u : numpy.ndarray
             Initial guess for displacement
         _gpu : bool
