@@ -23,7 +23,7 @@ class FESM3D:
         rho : float
             density in kg/m3
         gte : GenericElement
-            Class for 2D basis for a triangular element
+            Class for 3D basis for a triangular element
         gauss_quad : GaussianQuadrature
             Gaussian integration class
         mesh : Mesh
@@ -82,8 +82,6 @@ class FESM3D:
 
     Methods
     -------
-    time_step_size(self):
-        Integration time step determination
     calc_local_update(self, p1, p2, p3):
         Calculate the Jacobian, its determinant, and inverse
     set_K_M(self):
@@ -100,7 +98,7 @@ class FESM3D:
         Solve Navier Stokes equations
     """
 
-    def __init__(self, _mesh, _f, _nu=0.3, _E=200e9, _rho=8e3, _plain_stress=True, _u=None, _gpu=False, _sparse=False, _dt=0.001):
+    def __init__(self, _mesh, _f, _nu=0.3, _E=200e9, _rho=8e3, _u=None, _gpu=False, _sparse=False, _dt=0.001):
         """
         Parameters
         ----------
@@ -108,6 +106,12 @@ class FESM3D:
             Mesh for computational domain
         _f : function
             R.H.S function
+        _nu : int, optional
+            Poisson's ratio
+        _E : float, optional
+            Young's modulus
+        _rho : float, optional
+            density
         _u : numpy.ndarray
             Initial guess for displacement
         _gpu : bool
@@ -145,7 +149,6 @@ class FESM3D:
         self.nu = _nu
         self.E = _E
         self.rho = _rho
-        self.plain_stress = _plain_stress
 
         self.points_to_solve = np.array([], dtype=np.int32)
 
@@ -172,10 +175,6 @@ class FESM3D:
         print('Solving for Poisson raio:', self.nu)
         print('Solving for Young modulus:', self.E)
         print('Solving for density:', self.rho)
-        if self.plain_stress:
-            print('Solving for plain stress case')
-        else:
-            print('Solving for plain strain case')
 
     # @staticmethod
     def calc_local_update(self, p1, p2, p3, p4):

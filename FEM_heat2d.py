@@ -6,10 +6,10 @@ import cupyx.scipy as cps
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
 from FEM_mesh import Mesh
 
-# FEM Poisson 2D solver class
+# FEM Heat equation 2D solver class
 class FEheat2D:
     """
-    class for 2D Poisson equation solver with finite element method
+    class for 2D heat equation solver with finite element method
 
     ...
 
