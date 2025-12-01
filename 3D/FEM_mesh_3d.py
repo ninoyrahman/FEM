@@ -12,8 +12,6 @@ class Mesh_from_FreeCAD:
 
     Attributes
     ----------
-        points : numpy.ndarray
-            grid points
         npoints : int
             number of grid points
         tri : Tetrahedron object
