@@ -12,13 +12,13 @@ class Mesh:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
+        tri : Delaunay object
             Delaunay triangles
-        boundary_points : float
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points : float
+        bc_points : dict
             dict for dirichlet  boundary points and neumann boundary edges
     
     Methods
@@ -80,13 +80,13 @@ class Mesh_from_outline:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
+        tri : Delaunay object
             Delaunay triangles
-        boundary_points : float
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points : float
+        bc_points : dict
             dict for dirichlet  boundary points and neumann boundary edges
     
     Methods
@@ -149,21 +149,21 @@ class Mesh_cavity:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
+        tri : Delaunay object
             Delaunay triangles
-        boundary_points : float
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points : float
+        bc_points : dict
             dict for dirichlet  boundary points and neumann boundary edges
-        pflg : bool
+        pflg : numpy.ndarray
             points-outside-cavity flag
-        sflg : bool
+        sflg : numpy.ndarray
             triangles-outside-cavity flag
-        bflg : bool
+        bflg : numpy.ndarray
             boundary-points flag
-        cbflg : bool
+        cbflg : numpy.ndarray
             cavity-boundary-points flag    
         
     Methods
@@ -279,22 +279,22 @@ class Mesh_cavity_outline:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
+        tri : Delaunay object
             Delaunay triangles
-        boundary_points : float
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points : float
+        bc_points : dict
             dict for dirichlet  boundary points and neumann boundary edges
-        pflg : bool
+        pflg : numpy.ndarray
             points-outside-cavity flag
-        sflg : bool
+        sflg : numpy.ndarray
             triangles-outside-cavity flag
-        bflg : bool
+        bflg : numpy.ndarray
             boundary-points flag
-        cbflg : bool
-            cavity-boundary-points flag    
+        cbflg : numpy.ndarray
+            cavity-boundary-points flag
         
     Methods
     -------
@@ -402,17 +402,17 @@ class Mesh_ns:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
+        tri : Delaunay object
             Delaunay triangles
-        boundary_points : float
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points_p : float
+        bc_points_p : dict
             dict for dirichlet boundary points and neumann boundary edges for pressure
-        bc_points_u : float
+        bc_points_u : dict
             dict for dirichlet boundary points and neumann boundary edges for velocity
-        bc_points_v : float
+        bc_points_v : dict
             dict for dirichlet boundary points and neumann boundary edges for velocity
     
     Methods
@@ -482,17 +482,17 @@ class Mesh_from_outline_ns:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
+        tri : Delaunay object
             Delaunay triangles
-        boundary_points : float
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points_p : float
+        bc_points_p : dict
             dict for dirichlet boundary points and neumann boundary edges for pressure
-        bc_points_u : float
+        bc_points_u : dict
             dict for dirichlet boundary points and neumann boundary edges for velocity
-        bc_points_v : float
+        bc_points_v : dict
             dict for dirichlet boundary points and neumann boundary edges for velocity
     
     Methods
@@ -706,17 +706,17 @@ class Mesh_from_FreeCAD_ns:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
-            Delaunay triangles
-        boundary_points : float
+        tri : Tri object
+            triangles
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points_p : float
+        bc_points_p : dict
             dict for dirichlet boundary points and neumann boundary edges for pressure
-        bc_points_u : float
+        bc_points_u : dict
             dict for dirichlet boundary points and neumann boundary edges for velocity
-        bc_points_v : float
+        bc_points_v : dict
             dict for dirichlet boundary points and neumann boundary edges for velocity
     
     Methods
@@ -729,8 +729,10 @@ class Mesh_from_FreeCAD_ns:
         ----------
         _faces : numpy.ndarray
             Simplices coordinates
-        ratio : float, Optional
+        ratio : float, optional
             ratio for concave hull, smaller value for higher refinement
+        fcavity : function, optional
+            Returns True if a point is at cavity boundary
         """
 
         # Create Triangulation
@@ -763,25 +765,25 @@ class Mesh_from_FreeCAD_with_cavity_outline_ns:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
-            Delaunay triangles
-        boundary_points : float
+        tri : Tri object
+            triangles
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points_p : float
+        bc_points_p : dict
             dict for dirichlet  boundary points and neumann boundary edges for pressure
-        bc_points_u : float
+        bc_points_u : dict
             dict for dirichlet  boundary points and neumann boundary edges for velocity
-        bc_points_v : float
+        bc_points_v : dict
             dict for dirichlet  boundary points and neumann boundary edges for velocity
-        pflg : bool
+        pflg : numpy.ndarray
             points-outside-cavity flag
-        sflg : bool
+        sflg : numpy.ndarray
             triangles-outside-cavity flag
-        bflg : bool
+        bflg : numpy.ndarray
             boundary-points flag
-        cbflg : bool
+        cbflg : numpy.ndarray
             cavity-boundary-points flag    
         
     Methods
@@ -794,7 +796,7 @@ class Mesh_from_FreeCAD_with_cavity_outline_ns:
         ----------
         _faces : numpy.ndarray
             Simplices coordinates
-        ratio : float, Optional
+        ratio : float, optional
             ratio for concave hull, smaller value for higher refinement
         outline : numpy.ndarray
             outline points for solid-object/cavity
@@ -881,15 +883,15 @@ class Mesh_from_FreeCAD:
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
-            Delaunay triangles
-        boundary_points : float
+        tri : Tri object
+            triangles
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points_u : float
+        bc_points_u : Dict
             dict for dirichlet boundary points and neumann boundary edges for displacement
-        bc_points_v : float
+        bc_points_v : Dict
             dict for dirichlet boundary points and neumann boundary edges for displacement
     
     Methods
@@ -902,8 +904,10 @@ class Mesh_from_FreeCAD:
         ----------
         _faces : numpy.ndarray
             Simplices coordinates
-        ratio : float, Optional
+        ratio : float, optional
             ratio for concave hull, smaller value for higher refinement
+        fcavity : function, optional
+            Returns True if a point is at cavity boundary
         """
 
         # Create Triangulation

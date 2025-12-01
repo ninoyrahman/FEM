@@ -190,6 +190,16 @@ class Tri:
 
     """
     def __init__(self, _faces, ratio=0.05, fcavity=None):
+        """
+        Parameters
+        ----------
+        _faces : numpy.ndarray
+            Simplices coordinates
+        ratio : float, optional
+            ratio for concave hull, smaller value for higher refinement
+        fcavity : function, optional
+            Returns True if a point is at cavity boundary
+        """
         self.faces = _faces
         self.points = np.unique(self.faces, axis=0)
         self.nsimplex = self.faces.shape[0]//3
