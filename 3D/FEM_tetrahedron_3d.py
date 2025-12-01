@@ -167,7 +167,7 @@ class GaussianQuadrature:
 
 
     # Calculate the numerical integration for each node
-    def calculate(self, _f, p1, p2, p3, p4):
+    def calculate(self, _f, p1, p2, p3, p4, sm=True):
         """
         Parameters
         ----------
@@ -175,9 +175,23 @@ class GaussianQuadrature:
             R.H.S
         p1, p2, p3, p4 : numpy.ndarray
             coordinates of a triangle
+        sm : bool, optional
+            True if SM equations are solved
         """            
         # Get the global (x,y) coordinates at the weighted points
         xys = [self.tri_element.get_xy(wp[0], wp[1], wp[2], p1, p2, p3, p4) for wp in self.wps]
+
+        if not sm:
+            return np.array([
+            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N1(
+                wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N2(
+                wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N3(
+                wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N4(
+                wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
+            ])
 
         return np.array([
             sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N1(
