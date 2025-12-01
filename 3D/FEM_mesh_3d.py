@@ -4,116 +4,60 @@ import scipy as sp
 import shapely as shp
 from FEM_tetrahedron_3d import Tetrahedron
 
-class Mesh:
-    """
-    class for Mesh generator for square or circular plate
-
-    ...
-
-    Attributes
-    ----------
-        points : float
-            grid points
-        tri : float
-            Delaunay triangles
-        boundary_points : float
-            boundary points index
-        bc_points : float
-            dict for dirichlet  boundary points and neumann boundary edges
-    
-    Methods
-    -------
-    
-    """    
-    def __init__(self, x_min, x_max, n_x, y_min, y_max, n_y, z_min, z_max, n_z, rout=None):
-        """
-        Parameters
-        ----------
-        x_min : float
-            x-axes minimum
-        x_max : float
-            x-axes maximum
-        n_x : int
-            number of points along x-axes
-        y_min : float
-            y-axes minimum
-        y_max : float
-            y-axes maximum
-        n_y : int
-            number of points along y-axes
-        rout : float, optional
-            outer radius of circular plate, None for square plate
-        """
-        # Create a list with points coordinate (x,y)
-        points = []
-        nodes_x = np.linspace(x_min, x_max, n_x)
-        nodes_y = np.linspace(y_min, y_max, n_y)
-        nodes_z = np.linspace(z_min, z_max, n_z)
-        
-        for x in nodes_x:
-            for y in nodes_y:
-                for z in nodes_z: 
-                    points.append([x, y, z])
-                        
-        points = np.array(points)
-        self.points = points
-
-        # Create Delaunay object
-        self.tri = sp.spatial.Delaunay(points)
-
-        # Identify the boundary points
-        self.boundary_points = np.unique(self.tri.convex_hull.flatten())
-
-        # Initialize the boundary conditions dictionary
-        self.bc_points_u = {
-            "dirichlet": dict(),
-            "neumann_edge": dict()
-        }
-        self.bc_points_v = {
-            "dirichlet": dict(),
-            "neumann_edge": dict()
-        }
-        self.bc_points_w = {
-            "dirichlet": dict(),
-            "neumann_edge": dict()
-        }
-
 class Mesh_from_FreeCAD:
     """
-    class for FreeCAD Mesh for SM equations
+    class for FreeCAD Mesh for SM/Heat equations
 
     ...
 
     Attributes
     ----------
-        points : float
+        points : numpy.ndarray
             grid points
-        tri : float
-            Delaunay triangles
-        boundary_points : float
+        npoints : int
+            number of grid points
+        tri : Tetrahedron object
+            Tetrahedron
+        boundary_points : numpy.ndarray
             boundary points index
-        bc_points_u : float
+        convex_hull : numpy.ndarray
+            boundary-edge-points indices
+        bc_points : dict
+            dict for dirichlet boundary points and neumann boundary edges
+        bc_points_u : dict
             dict for dirichlet boundary points and neumann boundary edges for displacement
-        bc_points_v : float
+        bc_points_v : dict
             dict for dirichlet boundary points and neumann boundary edges for displacement
+        bc_points_w : dict
+            dict for dirichlet boundary points and neumann boundary edges for displacement
+        pflg : numpy.ndarray
+            points-outside-cavity flag
+        sflg : numpy.ndarray
+            triangles-outside-cavity flag
+        bflg : numpy.ndarray
+            boundary-points flag
+        cbflg : numpy.ndarray
+            cavity-boundary-points flag
     
     Methods
     -------
     
     """
-    def __init__(self, _faces, alpha=34, fcavity=None):
+    def __init__(self, _faces, alpha=34, outline=None):
         """
         Parameters
         ----------
         _faces : numpy.ndarray
             Simplices coordinates
-        ratio : float, Optional
-            ratio for concave hull, smaller value for higher refinement
+        alpha : float, optional
+            alpha parameter for alphashape
+        outline : numpy.ndarray
+            2D (x,y) outline of cavity
         """
 
         # Create Triangulation
-        self.tri = Tetrahedron(_faces, alpha, fcavity)
-        self.points = self.tri.points
+        self.tri = Tetrahedron(_faces, alpha)
+        self.npoints = self.tri.npoints
 
         # Identify the boundary points
         self.boundary_points = np.unique(self.tri.boundary_points)
@@ -131,3 +75,73 @@ class Mesh_from_FreeCAD:
             "dirichlet": dict(),
             "neumann_edge": dict()
         }
+        self.bc_points = {
+            "dirichlet": dict(),
+            "neumann_edge": dict()
+        }
+
+        # flags for cavity
+        # True is 1 and False is 0
+        self.pflg = np.ones(self.tri.npoints, dtype=bool) # points-outside-cavity flag
+        self.sflg = np.ones(self.tri.nsimplex, dtype=bool) # triangles-outside-cavity flag
+        self.bflg = np.zeros(self.tri.npoints, dtype=bool) # boundary-points flag
+        self.cbflg = np.zeros(self.tri.npoints, dtype=bool) # cavity-boundary-points flag
+
+        if outline is not None:
+            polygon = shp.geometry.polygon.Polygon(outline)
+            self.ncavity = 0
+            for idx, p in enumerate(self.tri.points):
+                point = shp.geometry.Point(p[0], p[1])
+                if polygon.contains(point): #if (p**2).sum() < r2: 
+                    self.pflg[idx] = False
+                    self.ncavity += 1
+
+            self.npoints = self.tri.npoints - self.ncavity
+
+            print('# cavity points=', self.ncavity)
+            print('# non-cavity points=', self.npoints)
+            print('# boundary points excluding cavity=', self.boundary_points.size)
+            
+            for idx, p_idx in enumerate(self.tri.simplices):
+                if not self.pflg[p_idx[0]] or not self.pflg[p_idx[1]] or not self.pflg[p_idx[2]]:
+                    self.sflg[idx] = False
+                    p1, p2, p3 = (self.tri.points[p_idx[0]], self.tri.points[p_idx[1]], self.tri.points[p_idx[2]])
+                    if not polygon.contains(shp.geometry.Point(p1[0], p1[1])):
+                        self.cbflg[p_idx[0]] = True
+                        self.boundary_points = np.append(self.boundary_points, p_idx[0]*np.ones(1, dtype=int))
+                    if not polygon.contains(shp.geometry.Point(p2[0], p2[1])):
+                        self.cbflg[p_idx[1]] = True
+                        self.boundary_points = np.append(self.boundary_points, p_idx[1]*np.ones(1, dtype=int))
+                    if not polygon.contains(shp.geometry.Point(p3[0], p3[1])):
+                        self.cbflg[p_idx[2]] = True
+                        self.boundary_points = np.append(self.boundary_points, p_idx[2]*np.ones(1, dtype=int))
+            
+            self.boundary_points = np.unique(self.boundary_points)
+            print('# boundary points including cavity=', self.boundary_points.size)
+
+            for p_idx in self.boundary_points:
+                self.bflg[p_idx] = True
+
+        # map point index to vectors and matrix index
+        self.pmap = -np.ones(self.tri.npoints, dtype=int)
+
+        idx = 0
+        for i in range(self.tri.npoints):
+            if self.pflg[i]:
+                self.pmap[i] = idx
+                idx += 1
+
+        # Boundary edges
+        X = self.tri.points[self.boundary_points]
+        dist_sq = np.sum((X[:,np.newaxis,:] - X[np.newaxis,:,:]) **2, axis=-1)
+        nearest = np.argsort(dist_sq, axis=1)
+
+        self.convex_hull = []
+        for pidx, nidx, nnidx in self.boundary_points[nearest[:, :3]]:
+            
+            if not [nidx, pidx] in self.convex_hull:
+                self.convex_hull.append([pidx, nidx])
+            if not [nnidx, pidx] in self.convex_hull:
+                self.convex_hull.append([pidx, nnidx])
+
+        self.convex_hull = np.unique(self.convex_hull, axis=0)

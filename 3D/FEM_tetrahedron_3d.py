@@ -226,8 +226,6 @@ class Tetrahedron:
         indices of vertices of faces/triangles
     boundary_points : numpy.ndarray
         indices of boundary points
-    convex_hull : numpy.ndarray
-        boundary-point-indices of lines on the mesh boundary
         
     Methods
     -------
@@ -269,17 +267,3 @@ class Tetrahedron:
             pidx = self.points.tolist().index(p.tolist())
             boundary_points_idx.append(pidx)
         self.boundary_points = np.unique(boundary_points_idx)
-
-        X = self.points[self.boundary_points]
-        dist_sq = np.sum((X[:,np.newaxis,:] - X[np.newaxis,:,:]) **2, axis=-1)
-        nearest = np.argsort(dist_sq, axis=1)
-
-        self.convex_hull = []
-        for pidx, nidx, nnidx in self.boundary_points[nearest[:, :3]]:
-            
-            if not [nidx, pidx] in self.convex_hull:
-                self.convex_hull.append([pidx, nidx])
-            if not [nnidx, pidx] in self.convex_hull:
-                self.convex_hull.append([pidx, nnidx])
-
-        self.convex_hull = np.unique(self.convex_hull, axis=0)

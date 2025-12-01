@@ -126,7 +126,7 @@ class FESM3D:
 
         self.mesh = _mesh
         self.n_elements = self.mesh.tri.nsimplex
-        self.n_points = self.mesh.tri.npoints
+        self.n_points = self.mesh.npoints
 
         self.f = _f
 
@@ -521,7 +521,7 @@ class FESM3D:
         # Set Neumann boundary conditions
         for ch_idx, du_values in self.mesh.bc_points_u["neumann_edge"].items():
             # convex_hull is a list with pair of point indices
-            ch_points = self.mesh.tri.convex_hull[ch_idx]
+            ch_points = self.mesh.convex_hull[ch_idx]
             p1, p2 = self.mesh.tri.points[ch_points]
             distance = np.sqrt(((p1 - p2)**2).sum())
             # Store the line integral in vector b
@@ -530,7 +530,7 @@ class FESM3D:
 
         for ch_idx, du_values in self.mesh.bc_points_v["neumann_edge"].items():
             # convex_hull is a list with pair of point indices
-            ch_points = self.mesh.tri.convex_hull[ch_idx]
+            ch_points = self.mesh.convex_hull[ch_idx]
             p1, p2 = self.mesh.tri.points[ch_points]
             distance = np.sqrt(((p1 - p2)**2).sum())
             # Store the line integral in vector b
@@ -539,7 +539,7 @@ class FESM3D:
 
         for ch_idx, du_values in self.mesh.bc_points_w["neumann_edge"].items():
             # convex_hull is a list with pair of point indices
-            ch_points = self.mesh.tri.convex_hull[ch_idx]
+            ch_points = self.mesh.convex_hull[ch_idx]
             p1, p2 = self.mesh.tri.points[ch_points]
             distance = np.sqrt(((p1 - p2)**2).sum())
             # Store the line integral in vector b
