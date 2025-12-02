@@ -1,8 +1,9 @@
-# class
+# FEM Heat equation solver
 import numpy as np
 import scipy as sp
 import cupy as cp
 import cupyx.scipy as cps
+from cupyx.scipy.sparse.linalg import gmres
 from FEM_tetrahedron_3d import GenericElement, GaussianQuadrature
 
 # FEM Heat equation 3D solver class
@@ -21,9 +22,9 @@ class FEheat3D:
         mesh : Mesh
             Mesh for computational domain
         n_elements : int
-            Number of simplex in Delaunay triangulation
+            Number of simplex
         n_points : int
-            Number of points in Delaunay triangulation
+            Number of points
         f : function
             R.H.S function
         dt : float
@@ -101,6 +102,8 @@ class FEheat3D:
             True: use GPU matrix solver, False: use CPU matrix solver, default CPU
         _sparse : bool
             True: use sparse matrix solver, False: use dense matrix solver, default Dense
+        _dt : float
+            Time step size
         """
         self.gte = GenericElement()
         self.gauss_quad = GaussianQuadrature()
