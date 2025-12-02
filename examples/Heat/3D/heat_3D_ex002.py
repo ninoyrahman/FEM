@@ -50,7 +50,7 @@ if __name__ == '__main__':
     exitCode = create_nodes(femmesh)
     exitCode = create_elements(femmesh)
     simplices_coord = np.round(np.array(femmesh.faces, dtype=np.float32)[:, :], 2) / 100
-    mesh = Mesh_from_FreeCAD(_faces=simplices_coord, alpha=34, outline=np.loadtxt('naca6412.dat')) #, outline=np.loadtxt('naca6412.dat')
+    mesh = Mesh_from_FreeCAD(_faces=simplices_coord, alpha=34, outline=np.loadtxt('data/naca6412.dat'))
     # Mesh data
     inner_points = [i for i in range(len(mesh.tri.points))
                     if i not in mesh.boundary_points]
