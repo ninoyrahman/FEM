@@ -3,13 +3,13 @@ import numpy as np
 import scipy as sp
 import cupy as cp
 import cupyx.scipy as cps
+from cupyx.scipy.sparse.linalg import gmres
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
-# from FEM_mesh import Mesh_ns
 
-# FEM Poisson 2D solver class
+# FEM Navier-Stokes 2D solver class for a domain with a cavity
 class FENS2D:
     """
-    class for 2D Poisson equation solver with finite element method
+    class for 2D Navier-Stokes equations solver with the finite element method for a domain with a cavity
 
     ...
 
@@ -22,9 +22,9 @@ class FENS2D:
         mesh : Mesh
             Mesh for computational domain
         n_elements : int 
-            Number of simplex in Delaunay triangulation
+            Number of simplex
         n_points : int
-            Number of points in Delaunay triangulation
+            Number of points
         f : function
             R.H.S function
         dt : float

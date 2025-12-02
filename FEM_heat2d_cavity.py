@@ -3,12 +3,13 @@ import numpy as np
 import scipy as sp
 import cupy as cp
 import cupyx.scipy as cps
+from cupyx.scipy.sparse.linalg import gmres
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
 
 # FEM Heat equation 2D solver class
 class FEheat2D:
     """
-    class for 2D heat equation solver with finite element method for domain with cavity
+    class for 2D heat equation solver with the finite element method for a domain with a cavity
 
     ...
 
@@ -21,9 +22,9 @@ class FEheat2D:
         mesh : Mesh
             Mesh for computational domain
         n_elements : int 
-            Number of simplex in Delaunay triangulation
+            Number of simplex
         n_points : int
-            Number of points in Delaunay triangulation
+            Number of points
         f : function
             R.H.S function
         dt : float
@@ -86,7 +87,7 @@ class FEheat2D:
     solve(self):
         Solve A u = b    
     """     
-    def __init__(self, _mesh, _f, _u=None, _gpu=False, _sparse=False):
+    def __init__(self, _mesh, _f, _u=None, _gpu=False, _sparse=False, _dt=1e-3):
         """
         Parameters
         ----------
@@ -100,6 +101,8 @@ class FEheat2D:
             True: use GPU matrix solver, False: use CPU matrix solver, default CPU
         _sparse : bool
             True: use sparse matrix solver, False: use dense matrix solver, default Dense
+        _dt : float, optional
+            Time step size
         """        
         self.gte = GenericTriElement()
         self.gauss_quad = GaussianQuadratureTri()
@@ -128,7 +131,7 @@ class FEheat2D:
         else:
             self.u = np.array(_u, copy=True)
 
-        self.dt = 1e-3
+        self.dt = _dt
 
         self.points_to_solve = np.array([], dtype=np.int32)
 
