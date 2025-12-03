@@ -259,19 +259,9 @@ class Tetrahedron:
         self.nsimplex = self.faces.shape[0]//4
         self.npoints = self.points.shape[0]
 
-        self.simplices = []
-        start = 0
-        end = 4
-        for fidx in range(self.nsimplex):
-            p1, p2, p3, p4 = self.faces[start:end, :]
-            pidx1 = self.points.tolist().index(p1.tolist())
-            pidx2 = self.points.tolist().index(p2.tolist())
-            pidx3 = self.points.tolist().index(p3.tolist())
-            pidx4 = self.points.tolist().index(p4.tolist())
-            self.simplices.append([pidx1, pidx2, pidx3, pidx4])
-            start += 4
-            end += 4
-        self.simplices = np.array(self.simplices, dtype=np.int32)
+        tree = sp.spatial.KDTree(self.points)
+        _, indices = tree.query(self.faces)
+        self.simplices = indices.reshape(self.nsimplex, 4).astype(np.int32)
 
         # cancave hull determines mesh boundary better than convex hull
         boundary_points_coord = np.unique(ashp.alphashape(self.points, alpha).vertices, axis=0)

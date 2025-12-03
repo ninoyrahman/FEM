@@ -2,6 +2,7 @@
 import numpy as np
 import scipy as sp
 import shapely as shp
+import itertools
 from FEM_tri import Tri
 
 class Mesh:
@@ -226,11 +227,8 @@ class Mesh_cavity:
         self.bflg = np.zeros(self.tri.npoints, dtype=bool) # boundary-points flag
         self.cbflg = np.zeros(self.tri.npoints, dtype=bool) # cavity-boundary-points flag
 
-        self.ncavity = 0
-        for idx, p in enumerate(self.tri.points):
-            if (p**2).sum() < r2:
-                self.pflg[idx] = False
-                self.ncavity += 1
+        self.pflg = np.array([False if (p**2).sum() < r2 else True for p in self.tri.points])
+        self.ncavity = self.tri.npoints - self.pflg.sum()
 
         self.npoints = self.tri.npoints - self.ncavity
 
@@ -255,17 +253,11 @@ class Mesh_cavity:
         self.boundary_points = np.unique(self.boundary_points)
         print('# boundary points including cavity=', self.boundary_points.size)
 
-        for p_idx in self.boundary_points:
-            self.bflg[p_idx] = True
+        self.bflg[self.boundary_points] = True
 
         # map point index to vectors and matrix index
-        self.pmap = -np.ones(self.tri.npoints, dtype=int)
-
-        idx = 0
-        for i in range(self.tri.npoints):
-            if self.pflg[i]:
-                self.pmap[i] = idx
-                idx += 1
+        counter = itertools.count()
+        self.pmap = np.array([next(counter) if flag else -1 for flag in self.pflg], dtype=int)
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
@@ -349,12 +341,8 @@ class Mesh_cavity_outline:
         self.cbflg = np.zeros(self.tri.npoints, dtype=bool) # cavity-boundary-points flag
 
         polygon = shp.geometry.polygon.Polygon(outline)
-        self.ncavity = 0
-        for idx, p in enumerate(self.tri.points):
-            point = shp.geometry.Point(p[0], p[1])
-            if polygon.contains(point): #if (p**2).sum() < r2: 
-                self.pflg[idx] = False
-                self.ncavity += 1
+        self.pflg = np.array([False if polygon.contains(shp.geometry.Point(p[:2])) else True for p in self.tri.points])
+        self.ncavity = self.tri.npoints - self.pflg.sum()
 
         self.npoints = self.tri.npoints - self.ncavity
 
@@ -379,17 +367,11 @@ class Mesh_cavity_outline:
         self.boundary_points = np.unique(self.boundary_points)
         print('# boundary points including cavity=', self.boundary_points.size)
 
-        for p_idx in self.boundary_points:
-            self.bflg[p_idx] = True
+        self.bflg[self.boundary_points] = True
 
         # map point index to vectors and matrix index
-        self.pmap = -np.ones(self.tri.npoints, dtype=int)
-
-        idx = 0
-        for i in range(self.tri.npoints):
-            if self.pflg[i]:
-                self.pmap[i] = idx
-                idx += 1
+        counter = itertools.count()
+        self.pmap = np.array([next(counter) if flag else -1 for flag in self.pflg], dtype=int)
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
@@ -653,12 +635,8 @@ class Mesh_cavity_outline_ns:
         self.cbflg = np.zeros(self.tri.npoints, dtype=bool) # cavity-boundary-points flag
 
         polygon = shp.geometry.polygon.Polygon(outline)
-        self.ncavity = 0
-        for idx, p in enumerate(self.tri.points):
-            point = shp.geometry.Point(p[0], p[1])
-            if polygon.contains(point): #if (p**2).sum() < r2: 
-                self.pflg[idx] = False
-                self.ncavity += 1
+        self.pflg = np.array([False if polygon.contains(shp.geometry.Point(p[:2])) else True for p in self.tri.points])
+        self.ncavity = self.tri.npoints - self.pflg.sum()
 
         self.npoints = self.tri.npoints - self.ncavity
 
@@ -683,17 +661,11 @@ class Mesh_cavity_outline_ns:
         self.boundary_points = np.unique(self.boundary_points)
         print('# boundary points including cavity=', self.boundary_points.size)
 
-        for p_idx in self.boundary_points:
-            self.bflg[p_idx] = True
+        self.bflg[self.boundary_points] = True
 
         # map point index to vectors and matrix index
-        self.pmap = -np.ones(self.tri.npoints, dtype=int)
-
-        idx = 0
-        for i in range(self.tri.npoints):
-            if self.pflg[i]:
-                self.pmap[i] = idx
-                idx += 1
+        counter = itertools.count()
+        self.pmap = np.array([next(counter) if flag else -1 for flag in self.pflg], dtype=int)
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)
@@ -830,12 +802,8 @@ class Mesh_from_FreeCAD_with_cavity_outline_ns:
         self.cbflg = np.zeros(self.tri.npoints, dtype=bool) # cavity-boundary-points flag
 
         polygon = shp.geometry.polygon.Polygon(outline)
-        self.ncavity = 0
-        for idx, p in enumerate(self.tri.points):
-            point = shp.geometry.Point(p[0], p[1])
-            if polygon.contains(point): #if (p**2).sum() < r2: 
-                self.pflg[idx] = False
-                self.ncavity += 1
+        self.pflg = np.array([False if polygon.contains(shp.geometry.Point(p[:2])) else True for p in self.tri.points])
+        self.ncavity = self.tri.npoints - self.pflg.sum()
 
         self.npoints = self.tri.npoints - self.ncavity
 
@@ -860,17 +828,11 @@ class Mesh_from_FreeCAD_with_cavity_outline_ns:
         self.boundary_points = np.unique(self.boundary_points)
         print('# boundary points including cavity=', self.boundary_points.size)
 
-        for p_idx in self.boundary_points:
-            self.bflg[p_idx] = True
+        self.bflg[self.boundary_points] = True
 
         # map point index to vectors and matrix index
-        self.pmap = -np.ones(self.tri.npoints, dtype=int)
-
-        idx = 0
-        for i in range(self.tri.npoints):
-            if self.pflg[i]:
-                self.pmap[i] = idx
-                idx += 1
+        counter = itertools.count()
+        self.pmap = np.array([next(counter) if flag else -1 for flag in self.pflg], dtype=int)
                 
         # map vectors and matrix index to point index 
         # self.emap = np.array([np.argwhere(self.pmap == i)[0, 0] for i in range(self.npoints)], dtype=int)

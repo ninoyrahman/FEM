@@ -205,18 +205,9 @@ class Tri:
         self.nsimplex = self.faces.shape[0]//3
         self.npoints = self.points.shape[0]
 
-        self.simplices = []
-        start = 0
-        end = 3
-        for fidx in range(self.nsimplex):
-            p1, p2, p3 = self.faces[start:end, :]
-            pidx1 = self.points.tolist().index(p1.tolist())
-            pidx2 = self.points.tolist().index(p2.tolist())
-            pidx3 = self.points.tolist().index(p3.tolist())
-            self.simplices.append([pidx1, pidx2, pidx3])
-            start += 3
-            end += 3
-        self.simplices = np.array(self.simplices, dtype=np.int32)
+        tree = sp.spatial.KDTree(self.points)
+        _, indices = tree.query(self.faces)
+        self.simplices = indices.reshape(self.nsimplex, 3).astype(np.int32)
 
         # cancave hull determines mesh boundary better than convex hull
         multi_point = shp.MultiPoint(self.points)
