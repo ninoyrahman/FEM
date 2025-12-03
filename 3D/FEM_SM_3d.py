@@ -22,7 +22,7 @@ class FESM3D:
         rho : float
             density in kg/m3
         gte : GenericElement
-            Class for 3D basis for a triangular element
+            Class for 3D basis for a tetrahedron element
         gauss_quad : GaussianQuadrature
             Gaussian integration class
         mesh : Mesh

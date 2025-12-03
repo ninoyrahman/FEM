@@ -11,14 +11,14 @@ from FEM_tetrahedron_3d import GenericElement, GaussianQuadrature
 
 class FENS3D:
     """
-    class for 2D Navier-Stokes equations solver with the finite element method
+    class for 3D Navier-Stokes equations solver with the finite element method
 
     ...
 
     Attributes
     ----------
         gte : GenericTriElement
-            Class for 2D basis for a triangular element
+            Class for 3D basis for a tetrahedron element
         gauss_quad : GaussianQuadratureTri
             Gaussian integration class
         mesh : Mesh
