@@ -117,8 +117,8 @@ class Mesh_from_FreeCAD:
             self.boundary_points = np.unique(self.boundary_points)
             print('# boundary points including cavity=', self.boundary_points.size)
 
-            for p_idx in self.boundary_points:
-                self.bflg[p_idx] = True
+        for p_idx in self.boundary_points:
+            self.bflg[p_idx] = True
 
         # map point index to vectors and matrix index
         self.pmap = -np.ones(self.tri.npoints, dtype=int)
