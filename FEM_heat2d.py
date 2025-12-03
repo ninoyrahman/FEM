@@ -5,7 +5,6 @@ import cupy as cp
 import cupyx.scipy as cps
 from cupyx.scipy.sparse.linalg import gmres
 from FEM_tri import GenericTriElement, GaussianQuadratureTri
-from FEM_mesh import Mesh
 
 # FEM Heat equation 2D solver class
 class FEheat2D:
