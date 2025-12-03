@@ -84,7 +84,7 @@ if __name__ == '__main__':
     print('iteration=')
     for i in range(iteration_max):
         heat.solve()
-        print(i, end=' ', flush=True)
+        print(i, end=' ')
     
     # Get the result
     u = heat.u

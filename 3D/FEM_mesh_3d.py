@@ -96,22 +96,17 @@ class Mesh_from_FreeCAD:
             print('# cavity points=', self.ncavity)
             print('# non-cavity points=', self.npoints)
             print('# boundary points excluding cavity=', self.boundary_points.size)
+
+            self.sflg = np.array([True if np.all(self.pflg[p_idx]) else False for p_idx in self.tri.simplices], dtype=bool)
+
+            geo_indices = self.tri.simplices[~self.sflg].reshape(-1) # point-indices of fully or partly inside simplices inside geometry
+            geo_points = self.tri.points[geo_indices] # points of simplices fully/partly inside geometry
+            geo_point_objects = shp.points(geo_points[:, 0], geo_points[:, 1]) # object for points of simplices fully/partly inside geometry
+            contains_results = polygon.contains(geo_point_objects) # mask for points inside geometry
+            outside_points_indices = geo_indices[~contains_results] # indicies of points outside geometry
             
-            for idx, p_idx in enumerate(self.tri.simplices):
-                if not self.pflg[p_idx[0]] or not self.pflg[p_idx[1]] or not self.pflg[p_idx[2]]:
-                    self.sflg[idx] = False
-                    p1, p2, p3 = (self.tri.points[p_idx[0]], self.tri.points[p_idx[1]], self.tri.points[p_idx[2]])
-                    if not polygon.contains(shp.geometry.Point(p1[0], p1[1])):
-                        self.cbflg[p_idx[0]] = True
-                        self.boundary_points = np.append(self.boundary_points, p_idx[0]*np.ones(1, dtype=int))
-                    if not polygon.contains(shp.geometry.Point(p2[0], p2[1])):
-                        self.cbflg[p_idx[1]] = True
-                        self.boundary_points = np.append(self.boundary_points, p_idx[1]*np.ones(1, dtype=int))
-                    if not polygon.contains(shp.geometry.Point(p3[0], p3[1])):
-                        self.cbflg[p_idx[2]] = True
-                        self.boundary_points = np.append(self.boundary_points, p_idx[2]*np.ones(1, dtype=int))
-            
-            self.boundary_points = np.unique(self.boundary_points)
+            self.cbflg[outside_points_indices] = True
+            self.boundary_points = np.unique(np.append(self.boundary_points, outside_points_indices))
             print('# boundary points including cavity=', self.boundary_points.size)
 
         self.bflg[self.boundary_points] = True
