@@ -31,9 +31,9 @@ if __name__ == '__main__':
     T = 2e5 # surface force in N/m
 
     """ 
-    Create a rectangular mesh
+    Create a mesh
     """
-    print('Create a rectangular mesh')
+    print('Create a mesh')
     # Create a mesh object and boundary condition dictionaries
     simplices_coord = np.round(np.array(faces, dtype=np.float32)[:, :2], decimals=3) / 100.0
 

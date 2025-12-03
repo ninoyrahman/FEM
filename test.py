@@ -1,0 +1,30 @@
+import os
+
+print('Heat equation test')
+print('')
+os.system('python examples/Heat/2D/heat_2D_ex001.py')
+os.system('python examples/Heat/2D/heat_2D_ex002.py')
+os.system('python examples/Heat/2D/heat_2D_ex003.py')
+os.system('python examples/Heat/2D/heat_2D_ex004.py')
+os.system('python examples/Heat/3D/heat_3D_ex001.py')
+os.system('python examples/Heat/3D/heat_3D_ex002.py')
+
+print('')
+print('Navier-Stokes equations test')
+print('')
+os.system('python examples/Navier-Stokes/2D/NS_2D_ex001.py')
+os.system('python examples/Navier-Stokes/2D/NS_2D_ex002.py')
+os.system('python examples/Navier-Stokes/2D/NS_2D_ex003.py')
+os.system('python examples/Navier-Stokes/3D/NS_3D_ex001.py')
+os.system('python examples/Navier-Stokes/3D/NS_3D_ex002.py')
+
+print('')
+print('Poisson equation test')
+print('')
+os.system('python examples/Poisson/2D/Poisson_2D_ex001.py')
+
+print('')
+print('Structural-Mechanics equations test')
+print('')
+os.system('python examples/Structural-Mechanics/2D/SM_2d_ex001.py')
+os.system('python examples/Structural-Mechanics/3D/SM_3D_ex001.py')
