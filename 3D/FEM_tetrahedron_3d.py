@@ -167,7 +167,7 @@ class GaussianQuadrature:
 
 
     # Calculate the numerical integration for each node
-    def calculate(self, _f, p1, p2, p3, p4, sm=True):
+    def calculate(self, _f, p1, p2, p3, p4, heat=False):
         """
         Parameters
         ----------
@@ -181,15 +181,15 @@ class GaussianQuadrature:
         # Get the global (x,y) coordinates at the weighted points
         xys = [self.tri_element.get_xy(wp[0], wp[1], wp[2], p1, p2, p3, p4) for wp in self.wps]
 
-        if not sm:
+        if heat:
             return np.array([
-            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N1(
+            sum([w * _f(xy[0], xy[1], xy[2]) * self.tri_element.N1(
                 wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
-            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N2(
+            sum([w * _f(xy[0], xy[1], xy[2]) * self.tri_element.N2(
                 wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
-            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N3(
+            sum([w * _f(xy[0], xy[1], xy[2]) * self.tri_element.N3(
                 wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
-            sum([w * _f(xy[0], xy[1], xy[2])[0] * self.tri_element.N4(
+            sum([w * _f(xy[0], xy[1], xy[2]) * self.tri_element.N4(
                 wp[0], wp[1], wp[2]) for w, wp, xy in zip(self.ws, self.wps, xys)]),
             ])
 

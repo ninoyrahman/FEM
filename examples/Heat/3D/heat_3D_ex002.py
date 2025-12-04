@@ -39,7 +39,7 @@ if __name__ == '__main__':
     """
     # Right-hand side function
     def RHS(_x, _y, _z):
-        return np.array([0., 0., 0.])
+        return 0.0
 
     """ 
     Create a rectangular mesh
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     femmesh = FemMesh()
     exitCode = create_nodes(femmesh)
     exitCode = create_elements(femmesh)
-    simplices_coord = np.round(np.array(femmesh.faces, dtype=np.float32)[:, :], 2) / 100
-    mesh = Mesh_from_FreeCAD(_faces=simplices_coord, alpha=34, outline=np.loadtxt('data/naca6412.dat'))
+    simplices_coord = np.round(np.array(femmesh.faces, dtype=np.float32)[:, :], 3) / 100
+    mesh = Mesh_from_FreeCAD(_faces=simplices_coord, alpha=1, outline=np.loadtxt('data/naca6412.dat'))
     # Mesh data
     inner_points = [i for i in range(len(mesh.tri.points))
                     if i not in mesh.boundary_points]
@@ -134,12 +134,13 @@ if __name__ == '__main__':
     xidx = 50
     yidx = 60
     zidx = 50
-    aspect='equal' # 'auto'
+    aspect= 'auto' # 'equal'
     
     plt.rcParams['figure.figsize'] = 16, 6
     fig = plt.figure()
     ax = fig.add_subplot(1, 3, 1)
-    surf = ax.contourf(grid_x[:, :, zidx], grid_y[:, :, zidx], u_intp[:, :, zidx], cmap=cmap)
+    label = r'$u(z=L_z/4)$'
+    surf = ax.contourf(grid_x[:, :, 25], grid_y[:, :, 25], u_intp[:, :, 25], cmap=cmap)
     ax.set_xlim([x.min(), x.max()])
     ax.set_ylim([y.min(), y.max()])
     ax.set_xlabel(r'$x$')
@@ -150,21 +151,23 @@ if __name__ == '__main__':
     cbar.ax.xaxis.set_label_position('bottom')
     
     ax = fig.add_subplot(1, 3, 2)
-    surf = ax.contourf(grid_x[:, yidx, :], grid_z[:, yidx, :], u_intp[:, yidx, :], cmap=cmap)
+    label = r'$u(z=L_z/2)$'
+    surf = ax.contourf(grid_x[:, :, 50], grid_y[:, :, 50], u_intp[:, :, 50], cmap=cmap)
     ax.set_xlim([x.min(), x.max()])
-    ax.set_ylim([z.min(), z.max()])
+    ax.set_ylim([y.min(), y.max()])
     ax.set_xlabel(r'$x$')
-    ax.set_ylabel(r'$z$')
+    ax.set_ylabel(r'$y$')
     ax.set_aspect(aspect)
     cbar = plt.colorbar(surf, ax=ax, orientation="horizontal", pad=0.1, ticks=lrange)
     cbar.ax.set_xlabel(label)
     cbar.ax.xaxis.set_label_position('bottom')
     
     ax = fig.add_subplot(1, 3, 3)
-    surf = ax.contourf(grid_z[xidx, :, :], grid_y[xidx, :, :], u_intp[xidx, :, :], cmap=cmap)
+    label = r'$u(z=3L_z/4)$'
+    surf = ax.contourf(grid_x[:, :, 75], grid_y[:, :, 75], u_intp[:, :, 75], cmap=cmap)
+    ax.set_xlim([x.min(), x.max()])
     ax.set_ylim([y.min(), y.max()])
-    ax.set_xlim([z.min(), z.max()])
-    ax.set_xlabel(r'$z$')
+    ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$y$')
     ax.set_aspect(aspect)
     cbar = plt.colorbar(surf, ax=ax, orientation="horizontal", pad=0.1, ticks=lrange)

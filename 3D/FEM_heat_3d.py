@@ -207,7 +207,7 @@ class FEheat3D:
                            1.0, 1.0, 2.0, 1.0], [1.0, 1.0, 1.0, 2.0]]) * (j_det / 120.0)
 
         # b matrix
-        b_local = j_det * self.gauss_quad.calculate(self.f, p1, p2, p3, p4, sm=False)
+        b_local = j_det * self.gauss_quad.calculate(self.f, p1, p2, p3, p4, heat=True)
 
         return K_local * j_det / 6.0, M_local, b_local
 
