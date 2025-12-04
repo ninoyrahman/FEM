@@ -133,48 +133,62 @@ if __name__ == '__main__':
     """
     print('Plot')
     u_tot = np.sqrt(u**2 + v**2 + w**2)
-    u_norm = u / u_tot
-    v_norm = v / u_tot
-    w_norm = w / u_tot
+    mask = u_tot > 0
+    u_norm = np.zeros_like(u, dtype=np.float32)
+    v_norm = np.zeros_like(v, dtype=np.float32)
+    w_norm = np.zeros_like(w, dtype=np.float32)
+    u_norm[mask] = u[mask] / u_tot[mask]
+    v_norm[mask] = v[mask] / u_tot[mask]
+    w_norm[mask] = w[mask] / u_tot[mask]
+
+    var = np.array(u_tot, copy=True)
     
     grid_x, grid_y, grid_z = np.mgrid[x.min():x.max():100j, y.min():y.max():100j, z.min():z.max():100j]
-    u_intp = sp.interpolate.griddata(mesh.tri.points, u_tot, (grid_x, grid_y, grid_z), method='linear')
-    lrange = np.linspace(u_tot.min(), u_tot.max(), 6)
+    u_intp = sp.interpolate.griddata(mesh.tri.points, var, (grid_x, grid_y, grid_z), method='linear')
+    lrange = np.linspace(var.min(), var.max(), 6)
     label = r'$u_{tot}$'
     cmap = cm.coolwarm
     
     plt.rcParams['figure.figsize'] = 16, 6
     fig = plt.figure()
     ax = fig.add_subplot(1, 3, 1)
-    surf = ax.contourf(grid_x[:, :, 50], grid_y[:, :, 50], u_intp[:, :, 50], cmap=cmap)
+    zidx = 25
+    label = r'$u(z=L_z/4)$'
+    surf = ax.contourf(grid_x[:, :, zidx], grid_y[:, :, zidx], u_intp[:, :, zidx], cmap=cmap)
     ax.quiver(x[::5], y[::5], u_norm[::5], v_norm[::5], units='xy', scale=10, alpha=0.5)
     ax.set_xlim([x.min(), x.max()])
     ax.set_ylim([y.min(), y.max()])
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$y$')
-    ax.set_aspect('equal')
+    ax.set_aspect('auto')
     cbar = plt.colorbar(surf, ax=ax, orientation="horizontal", pad=0.1, ticks=lrange)
     cbar.ax.set_xlabel(label)
     cbar.ax.xaxis.set_label_position('bottom')
-    
+
     ax = fig.add_subplot(1, 3, 2)
-    surf = ax.contourf(grid_x[:, 50, :], grid_z[:, 50, :], u_intp[:, 50, :], cmap=cmap)
+    zidx = 50
+    label = r'$u(z=L_z/2)$'
+    surf = ax.contourf(grid_x[:, :, zidx], grid_y[:, :, zidx], u_intp[:, :, zidx], cmap=cmap)
+    ax.quiver(x[::5], y[::5], u_norm[::5], v_norm[::5], units='xy', scale=10, alpha=0.5)
     ax.set_xlim([x.min(), x.max()])
-    ax.set_ylim([z.min(), z.max()])
+    ax.set_ylim([y.min(), y.max()])
     ax.set_xlabel(r'$x$')
-    ax.set_ylabel(r'$z$')
-    ax.set_aspect('equal')
+    ax.set_ylabel(r'$y$')
+    ax.set_aspect('auto')
     cbar = plt.colorbar(surf, ax=ax, orientation="horizontal", pad=0.1, ticks=lrange)
     cbar.ax.set_xlabel(label)
     cbar.ax.xaxis.set_label_position('bottom')
-    
+
     ax = fig.add_subplot(1, 3, 3)
-    surf = ax.contourf(grid_y[50, :, :], grid_z[50, :, :], u_intp[50, :, :], cmap=cmap)
-    ax.set_xlim([y.min(), y.max()])
-    ax.set_ylim([z.min(), z.max()])
-    ax.set_xlabel(r'$y$')
-    ax.set_ylabel(r'$z$')
-    ax.set_aspect('equal')
+    zidx = 75
+    label = r'$u(z=3L_z/4)$'
+    surf = ax.contourf(grid_x[:, :, zidx], grid_y[:, :, zidx], u_intp[:, :, zidx], cmap=cmap)
+    ax.quiver(x[::5], y[::5], u_norm[::5], v_norm[::5], units='xy', scale=10, alpha=0.5)
+    ax.set_xlim([x.min(), x.max()])
+    ax.set_ylim([y.min(), y.max()])
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$y$')
+    ax.set_aspect('auto')
     cbar = plt.colorbar(surf, ax=ax, orientation="horizontal", pad=0.1, ticks=lrange)
     cbar.ax.set_xlabel(label)
     cbar.ax.xaxis.set_label_position('bottom')
