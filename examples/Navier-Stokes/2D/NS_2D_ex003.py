@@ -129,9 +129,12 @@ if __name__ == '__main__':
     print('Plot')
     plt.rcParams['figure.figsize'] = 12, 12
     
-    v2 = u**2 + v**2
-    u_norm = u / np.sqrt(v2)
-    v_norm = v / np.sqrt(v2)
+    u_tot = np.sqrt(u**2 + v**2)
+    mask = u_tot > 0
+    u_norm = np.zeros_like(u, dtype=np.float32)
+    v_norm = np.zeros_like(v, dtype=np.float32)
+    u_norm[mask] = u[mask] / u_tot[mask]
+    v_norm[mask] = v[mask] / u_tot[mask]
     
     fig = plt.figure()
     ax = fig.add_subplot(3, 2, 1, projection='3d')
@@ -157,15 +160,15 @@ if __name__ == '__main__':
     cbar.ax.set_ylabel(r'$u$')
     
     ax = fig.add_subplot(3, 2, 5, projection='3d')
-    plot3d(ax, v2, varmin=v2.min(), varmax=v2.max(), x=mesh.tri.points[:, 0], y=mesh.tri.points[:, 1], label=r'$v^2$', azim=45)
+    plot3d(ax, u_tot, varmin=u_tot.min(), varmax=u_tot.max(), x=mesh.tri.points[:, 0], y=mesh.tri.points[:, 1], label=r'$v^2$', azim=45)
     
     ax = fig.add_subplot(3, 2, 6)
-    surf = ax.tricontourf(x, y, v2, cmap=cm.coolwarm)
+    surf = ax.tricontourf(x, y, u_tot, cmap=cm.coolwarm)
     ax.quiver(x[::5], y[::5], u_norm[::5], v_norm[::5], units='xy', scale=15, alpha=0.5)
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$y$')
-    cbar = plt.colorbar(surf, ax=ax, orientation="vertical", pad=0.02, ticks=np.linspace(v2.min(), v2.max(), 11))
-    cbar.ax.set_ylabel(r'$v^2$')
+    cbar = plt.colorbar(surf, ax=ax, orientation="vertical", pad=0.02, ticks=np.linspace(u_tot.min(), u_tot.max(), 11))
+    cbar.ax.set_ylabel(r'$u_{tot}$')
     
     plt.tight_layout()
     plt.savefig('NS_2D_ex003.png')

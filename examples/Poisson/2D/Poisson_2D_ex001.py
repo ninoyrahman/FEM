@@ -102,10 +102,6 @@ if __name__ == '__main__':
 
     plt.rcParams['figure.figsize'] = 12, 6
     
-    # Analytical solution
-    x = mesh.tri.points[:, 0]
-    y = mesh.tri.points[:, 1]
-    
     u_exact_tmp = u_exact.reshape((n_x, n_y))
     u_tmp = u.reshape((n_x, n_y))
     

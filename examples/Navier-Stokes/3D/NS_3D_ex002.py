@@ -4,7 +4,7 @@
 # import
 import os
 import sys
-sys.path.append(os. getcwd() + '\\3D')
+sys.path.append(os. getcwd())
 sys.path.append(os. getcwd() + '\\data')
 
 import numpy as np

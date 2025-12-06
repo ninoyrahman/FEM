@@ -124,12 +124,12 @@ if __name__ == '__main__':
     print('Plot')
     plt.rcParams['figure.figsize'] = 12, 12
     
-    # Analytical solution
-    x = mesh.tri.points[:, 0]
-    y = mesh.tri.points[:, 1]
-    
-    u_norm = u / np.sqrt(u**2 + v**2)
-    v_norm = v / np.sqrt(u**2 + v**2)
+    u_tot = np.sqrt(u**2 + v**2)
+    mask = u_tot > 0
+    u_norm = np.zeros_like(u, dtype=np.float32)
+    v_norm = np.zeros_like(v, dtype=np.float32)
+    u_norm[mask] = u[mask] / u_tot[mask]
+    v_norm[mask] = v[mask] / u_tot[mask]
     
     fig = plt.figure()
     ax = fig.add_subplot(3, 2, 1, projection='3d')

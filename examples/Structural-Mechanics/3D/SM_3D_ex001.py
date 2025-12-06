@@ -4,7 +4,7 @@
 # import
 import os
 import sys
-sys.path.append(os. getcwd() + '\\3D')
+sys.path.append(os. getcwd())
 sys.path.append(os. getcwd() + '\\data')
 
 import numpy as np
@@ -147,9 +147,6 @@ if __name__ == '__main__':
     uy = u[1::3, 0]
     uz = u[2::3, 0]
     u_tot = np.sqrt(ux**2+uy**2+uz**2)
-    ux_norm = ux / u_tot
-    uy_norm = uy / u_tot
-    uz_norm = uz / u_tot
     x_new = x + ux
     y_new = y + uy
     z_new = z + uz

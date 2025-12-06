@@ -112,15 +112,14 @@ if __name__ == '__main__':
     print('Plot')
     plt.rcParams['figure.figsize'] = 12, 6
     
-    # Analytical solution
-    x = mesh.tri.points[:, 0]
-    y = mesh.tri.points[:, 1]
-    
     ux = u[0::2, 0]
     uy = u[1::2, 0]
     u_tot = np.sqrt(ux**2+uy**2)
-    ux_norm = ux / u_tot
-    uy_norm = uy / u_tot
+    mask = u_tot > 0
+    ux_norm = np.zeros_like(ux, dtype=np.float32)
+    uy_norm = np.zeros_like(uy, dtype=np.float32)
+    ux_norm[mask] = ux[mask] / u_tot[mask]
+    uy_norm[mask] = uy[mask] / u_tot[mask]
     
     fig = plt.figure()
     ax = fig.add_subplot(1, 2, 1)
