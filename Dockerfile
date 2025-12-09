@@ -20,12 +20,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
     /opt/conda/bin/conda clean -afy
 
-COPY requirements.txt /app/
-COPY data/ /app/data/
-COPY *.py /app/
-COPY examples/ /app/examples/
+# COPY requirements.txt /app/
+# COPY data/ /app/data/
+# COPY *.py /app/
+# COPY examples/ /app/examples/
 
-WORKDIR /app
+RUN git clone https://github.com/ninoyrahman/FEM.git
+WORKDIR /FEM/
 
 RUN pip install -r requirements.txt
 
