@@ -5,7 +5,7 @@
 import os
 import sys
 sys.path.append(os. getcwd())
-sys.path.append(os. getcwd() + '\\data')
+sys.path.append(os. getcwd() + '/data/')
 
 import numpy as np
 import scipy as sp
@@ -171,5 +171,8 @@ if __name__ == '__main__':
     cbar.ax.set_ylabel(r'$u_{tot}$')
     
     plt.tight_layout()
-    plt.savefig('NS_2D_ex003.png')
+    output_path = os.getcwd() + '/output/'
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    plt.savefig('output/NS_2D_ex003.png')
     plt.close()
