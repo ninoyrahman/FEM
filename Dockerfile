@@ -23,6 +23,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
 RUN git clone https://github.com/ninoyrahman/FEM.git
 WORKDIR /FEM/
 
-RUN pip install -r requirements.txt
+RUN git pull && \
+    pip install -r requirements.txt
 
 CMD [ "python", "test.py" ]
